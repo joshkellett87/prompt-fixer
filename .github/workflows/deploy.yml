@@ -1,0 +1,37 @@
+name: Deploy to Digital Ocean
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Create app directory if it doesn't exist (first run)
+            mkdir -p /var/www/prompt-architect
+            cd /var/www/prompt-architect
+
+            # Clone if empty, otherwise pull
+            if [ -d ".git" ]; then
+              git pull origin main
+            else
+              git clone https://github.com/${{ github.repository }} .
+            fi
+
+            # Install dependencies and build
+            npm ci
+            npm run build
+
+            # Setup env if missing (manual step usually, but ensure it exists)
+            # You should populate .env manually on server first!
+
+            # Start/Restart with PM2
+            pm2 startOrRestart ecosystem.config.js --env production
