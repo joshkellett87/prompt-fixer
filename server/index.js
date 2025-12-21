@@ -41,7 +41,7 @@ app.use((req, res, next) => {
 // Middleware
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production'
-    ? 'https://prompt-architect.joshk.cc'
+    ? 'https://promptfixer.co'
     : true, // Allow all origins in development
   credentials: true
 };

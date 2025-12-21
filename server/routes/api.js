@@ -69,7 +69,7 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://prompt-architect.joshk.cc", // Optional, for including your app on openrouter.ai rankings.
+        "HTTP-Referer": "https://promptfixer.co", // Optional, for including your app on openrouter.ai rankings.
         "X-Title": "Prompt Architect", // Optional. Shows in rankings on openrouter.ai.
         "Content-Type": "application/json"
       },
