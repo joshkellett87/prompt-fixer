@@ -3,7 +3,7 @@ const router = express.Router();
 const { verifyTurnstile, turnstileRateLimiter } = require('../middleware/turnstile');
 const rateLimiter = require('../middleware/rateLimiter');
 
-const MODEL_NAME = "google/gemini-3-flash-preview";
+const MODEL_NAME = "google/gemini-2.5-flash-lite-preview-09-2025";
 
 router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, async (req, res) => {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -53,10 +53,16 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
       return res.status(400).json({ error: 'Invalid request: max_tokens must be between 1 and 100000' });
     }
 
-    // Ensure the model is set
+    // Ensure the model is set, and enable reasoning
     const requestBody = {
       model: MODEL_NAME,
       ...sanitizedBody
+    };
+
+    // To enable reasoning with the default parameters (medium effort, no exclusions)
+    // See: https://openrouter.ai/docs/guides/best-practices/reasoning-tokens
+    requestBody.reasoning = {
+      enabled: true
     };
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
