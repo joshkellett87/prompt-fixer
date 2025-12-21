@@ -3,3 +3,10 @@ dist/
 .env
 *.log
 .DS_Store
+key.txt
+key.txt.pub
+implementation-plan.md
+v2-improvements.md
+IMPROVEMENT_PLAN.md
+plan.md
+plan.md

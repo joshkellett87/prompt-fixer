@@ -23,6 +23,10 @@ import {
   BrainCircuit
 } from 'lucide-react';
 import { callApiWithBackoff, fetchOptimizedPrompt } from './api';
+import { frameworks } from './prompts/frameworks';
+import { getSystemInstruction } from './prompts/systemInstructions';
+
+const HISTORY_STORAGE_KEY = 'prompt-architect-history';
 
 const App = () => {
   // State Management
@@ -33,42 +37,92 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isTtsLoading, setIsTtsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load history:', e);
+    }
+    return [];
+  });
   const [error, setError] = useState(null);
   const [activeFramework, setActiveFramework] = useState('SMART');
   const [showFrameworks, setShowFrameworks] = useState(false);
-  
-  const dropdownRef = useRef(null);
 
-  // Framework Metadata
-  const frameworks = {
-    'CO-STAR': {
-      label: 'Context, Objective, Style, Tone, Audience, Response',
-      description: 'Best for business, marketing, and creative writing. High focus on persona and audience.',
-      useCase: 'Professional & Creative'
-    },
-    'RISEN': {
-      label: 'Role, Instruction, Structure, Examples, Nuance',
-      description: 'Best for technical tasks, coding, and logical analysis. High focus on data formats.',
-      useCase: 'Technical & Data'
-    },
-    'RACE': {
-      label: 'Role, Action, Context, Expectation',
-      description: 'A streamlined framework for quick summaries, email drafts, or simple utility requests.',
-      useCase: 'Quick Tasks'
+
+  const dropdownRef = useRef(null);
+  const widgetIdRef = useRef(null);
+
+
+
+
+  // Save history to localStorage on update
+  useEffect(() => {
+    try {
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+    } catch (e) {
+      console.warn('Failed to save history:', e);
     }
-  };
+  }, [history]);
 
   // Turnstile Integration
   useEffect(() => {
-    // Define the global callback that Turnstile calls on success
-    window.onTurnstileSuccess = (token) => {
-      window.turnstileToken = token;
+    const renderWidget = () => {
+      if (window.turnstile && !widgetIdRef.current) {
+        const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+        if (!siteKey) {
+          console.warn("Turnstile Site Key is missing. Check your .env file or VITE_TURNSTILE_SITE_KEY variable.");
+          return;
+        }
+
+        window.turnstile.ready(() => {
+          try {
+            widgetIdRef.current = window.turnstile.render('#turnstile-container', {
+              sitekey: siteKey,
+              callback: (token) => {
+                window.turnstileToken = token;
+                setError(null);
+              },
+              'error-callback': (errorCode) => {
+                console.error('Turnstile error:', errorCode);
+                setError('Security verification failed. Please refresh the page.');
+              },
+              appearance: 'interaction-only',
+              theme: 'light',
+            });
+          } catch (e) {
+            console.error('Failed to render Turnstile:', e);
+          }
+        });
+      }
     };
 
-    // Clean up
+    // If script already loaded
+    if (window.turnstile) {
+      renderWidget();
+    } else {
+      // Polling for Turnstile availability (more robust than setTimeout)
+      const interval = setInterval(() => {
+        if (window.turnstile) {
+          clearInterval(interval);
+          renderWidget();
+        }
+      }, 100);
+      return () => clearInterval(interval);
+    }
+
     return () => {
-      window.onTurnstileSuccess = null;
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+      window.turnstileToken = null;
     };
   }, []);
 
@@ -83,34 +137,12 @@ const App = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // System Prompt Construction
-  const getSystemInstruction = (framework) => {
-    const isSmart = framework === 'SMART';
-    
-    return `You are the "Prompt Architect," a world-class AI Interaction Designer. 
-Your mission: Transform vague ideas into high-performance, structured instructions.
-
-${isSmart ? `
-SMART LOGIC:
-1. Analyze user intent.
-2. Silently choose the best framework (CO-STAR, RISEN, or RACE).
-3. Do not explain your choice or strategy to the user.
-` : `FRAMEWORK TO USE: ${framework} (${frameworks[framework].label})`}
-
-CRITICAL OUTPUT STRUCTURE:
-1. Use [PROMPT_START] and [PROMPT_END] tags around the optimized prompt.
-2. ONLY the final prompt to be copied goes inside these tags. NO CONVERSATIONAL FILLER.
-3. Provide 3-5 refinement questions as a JSON array inside [QUESTIONS_START] and [QUESTIONS_END].
-
-Focus exclusively on instruction quality. Be concise and authoritative.`;
-  };
-
   // Primary Logic: Generation
   const generatePrompt = async (input, answers = "", isAutoRefine = false) => {
     if (!input && !answers && !isAutoRefine) return;
     
     // Check for Turnstile token
-    if (!window.turnstileToken && process.env.NODE_ENV === 'production') {
+    if (!window.turnstileToken && import.meta.env.PROD) {
        setError("Please complete the security check (Captcha) below.");
        return;
     }
@@ -119,22 +151,24 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
     setError(null);
 
     let fullPrompt = answers 
-      ? `Original Intent: ${userInput}\n\nUser Refinement Answers:\n${answers}\n\nTask: Re-build the optimized prompt incorporating these specifics.`
+      ? `## Current Optimized Prompt (BASE):\n${optimizedPrompt}\n\n## Original Intent:\n${userInput}\n\n## User's Refinement Answers:\n${answers}\n\n## Task: Integrate answers while preserving all existing content. Enhance the prompt structure without losing any details.`
       : `Original Intent: ${input}`;
 
     if (isAutoRefine) {
-      fullPrompt = `Current Draft:\n${optimizedPrompt}\n\nTask: Perform a structural audit. Remove redundancy and sharpen logic. Return only the improved prompt inside [PROMPT_START] tags.`;
+      fullPrompt = `Current Draft:\n${optimizedPrompt}\n\nTask: Perform a structural audit. Remove redundancy and sharpen logic. IMPORTANT: Preserve all specific details, constraints, and intent from the Current Draft. Return only the improved prompt inside [PROMPT_START] tags.`;
     }
 
     const apiCall = () => fetchOptimizedPrompt({
-        contents: [{ parts: [{ text: fullPrompt }] }],
-        systemInstruction: { parts: [{ text: getSystemInstruction(activeFramework) }] },
+        messages: [
+          { role: "system", content: getSystemInstruction(activeFramework, !!answers || isAutoRefine) },
+          { role: "user", content: fullPrompt }
+        ],
         turnstileToken: window.turnstileToken
     });
 
     try {
       const result = await callApiWithBackoff(apiCall);
-      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const text = result.choices?.[0]?.message?.content || "";
       
       const promptMatch = text.match(/\[PROMPT_START\]([\s\S]*?)\[PROMPT_END\]/);
       const questionMatch = text.match(/\[QUESTIONS_START\]([\s\S]*?)\[QUESTIONS_END\]/);
@@ -162,13 +196,18 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
       setOptimizedPrompt(cleanPrompt);
       setPendingAnswers({});
       if (!answers && !isAutoRefine) {
-        setHistory(prev => [input, ...prev.filter(h => h !== input)].slice(0, 5));
+        const historyItem = {
+          input,
+          optimizedPrompt: cleanPrompt,
+          refinementQuestions: questionMatch ? JSON.parse(questionMatch[1]) : [],
+          timestamp: Date.now()
+        };
+        setHistory(prev => [historyItem, ...prev.filter(h => h.input !== input)].slice(0, 5));
       }
       
-      // Reset Turnstile if needed for subsequent requests?
-      // Usually token is one-time use. Need to reset widget.
-      if (window.turnstile) {
-        window.turnstile.reset('#cf-turnstile');
+      // Reset Turnstile if needed for subsequent requests
+      if (window.turnstile && widgetIdRef.current) {
+        window.turnstile.reset(widgetIdRef.current);
         window.turnstileToken = null;
       }
       
@@ -216,7 +255,7 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
           
           <div className="flex flex-col gap-2 min-w-[280px]">
             <div className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-400 tracking-widest px-1">
-              <BrainCircuit size={10} className="text-indigo-500" /> Interaction Mode
+              <BrainCircuit size={10} className="text-indigo-500" /> Framework
             </div>
             
             <div className="relative" ref={dropdownRef}>
@@ -226,7 +265,7 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
               >
                 <div className="flex items-center gap-2">
                   <Zap size={12} className={activeFramework === 'SMART' ? "text-amber-500" : "text-indigo-500"} />
-                  {activeFramework === 'SMART' ? 'Auto-Select Mode (Active)' : `${activeFramework} Strategy Active`}
+                  {activeFramework === 'SMART' ? 'Smart Mode' : `${activeFramework} Strategy Active`}
                 </div>
                 <ChevronDown size={12} className={`transition-transform duration-200 ${showFrameworks ? 'rotate-180' : ''}`} />
               </button>
@@ -239,7 +278,7 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
                       activeFramework === 'SMART' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50'
                     }`}
                   >
-                    Auto-Select (Recommended)
+                    Smart Mode (Recommended)
                   </button>
                   <div className="h-px bg-slate-100 my-1 mx-2" />
                   {Object.keys(frameworks).map(f => (
@@ -272,7 +311,7 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
           <div className="lg:col-span-5 space-y-6 sticky top-8">
             <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
               <div className="p-6">
-                <h2 className="font-black text-slate-800 flex items-center gap-2 uppercase tracking-tighter text-[10px] mb-4">
+                <h2 className="font-black text-slate-800 flex items-center gap-2 uppercase tracking-tighter text-sm mb-4">
                   <MessageSquarePlus size={14} className="text-indigo-600" />
                   Your Idea
                 </h2>
@@ -282,25 +321,30 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
                   placeholder="What should the AI do? E.g. 'Critique this project plan' or 'Write a landing page for an organic tea brand'..."
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                      e.preventDefault();
+                      if (userInput.trim() && window.turnstileToken && !isLoading) {
+                        generatePrompt(userInput);
+                      }
+                    }
+                  }}
                 />
 
                  {/* Turnstile Widget */}
-                 <div className="mt-4 flex justify-center">
-                    <div id="cf-turnstile" 
-                         className="cf-turnstile" 
-                         data-sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                         data-callback="onTurnstileSuccess"
-                         data-theme="light">
-                    </div>
+                 <div className="mt-4 flex justify-center min-h-[65px]">
+                    <div id="turnstile-container"></div>
                 </div>
 
 
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   <button
                     onClick={() => generatePrompt(userInput)}
-                    disabled={isLoading || !userInput}
-                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-white text-xs transition-all active:scale-[0.98] ${
-                      isLoading || !userInput ? 'bg-slate-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100'
+                    disabled={!userInput.trim() || isLoading || !window.turnstileToken}
+                    className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-white text-xs transition-all active:scale-[0.98] bg-indigo-600 ${
+                      userInput.trim() && window.turnstileToken && !isLoading
+                        ? 'hover:bg-indigo-700 shadow-lg shadow-indigo-100'
+                        : 'opacity-50 cursor-not-allowed'
                     }`}
                   >
                     {isLoading ? <RefreshCw className="animate-spin" size={16} /> : <><Wand2 size={16} /> Build Prompt</>}
@@ -338,13 +382,18 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
                   </button>
                 </div>
                 <div className="space-y-1.5">
-                  {history.map((h, i) => (
+                  {history.map((historyItem, i) => (
                     <button
                       key={i}
-                      onClick={() => { setUserInput(h); generatePrompt(h); }}
+                      onClick={() => {
+                        setUserInput(historyItem.input);
+                        setOptimizedPrompt(historyItem.optimizedPrompt);
+                        setRefinementQuestions(historyItem.refinementQuestions || []);
+                        setPendingAnswers({});
+                      }}
                       className="w-full text-left p-3 text-[10px] font-bold text-slate-500 bg-white hover:border-indigo-200 border border-slate-100 rounded-xl transition-all flex items-center justify-between group"
                     >
-                      <span className="truncate pr-4">{h}</span>
+                      <span className="truncate pr-4">{historyItem.input}</span>
                       <ChevronRight size={10} className="opacity-0 group-hover:opacity-100 text-indigo-500" />
                     </button>
                   ))}
@@ -355,7 +404,7 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
 
           {/* Results Side */}
           <div className="lg:col-span-7 space-y-8">
-            <div className={`bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/40 border border-slate-100 flex flex-col min-h-[550px] transition-all duration-700 ${!optimizedPrompt && !isLoading ? 'opacity-40 grayscale blur-[1px]' : 'opacity-100'}`}>
+            <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/40 border border-slate-100 flex flex-col min-h-[550px] transition-all duration-700">
               <div className="p-6 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
@@ -393,9 +442,17 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
                     {optimizedPrompt}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full py-32 opacity-20 text-slate-400">
-                    <Layout size={40} strokeWidth={1} />
-                    <p className="mt-3 font-black text-[10px] tracking-widest uppercase">Awaiting Input</p>
+                  <div className="bg-slate-50/50 rounded-3xl p-6 space-y-4">
+                    {/* Skeleton lines */}
+                    <div className="h-4 bg-slate-200 rounded animate-pulse w-full"></div>
+                    <div className="h-4 bg-slate-200 rounded animate-pulse w-5/6"></div>
+                    <div className="h-4 bg-slate-200 rounded animate-pulse w-4/6"></div>
+                    <div className="h-4 bg-slate-200 rounded animate-pulse w-full"></div>
+                    <div className="h-4 bg-slate-200 rounded animate-pulse w-3/4"></div>
+                    {/* Placeholder text */}
+                    <p className="text-center text-slate-400 text-sm mt-6">
+                      Your optimized prompt will appear here
+                    </p>
                   </div>
                 )}
               </div>
@@ -418,7 +475,7 @@ Focus exclusively on instruction quality. Be concise and authoritative.`;
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3">
                     {refinementQuestions.map((q, i) => (
                       <div key={i} className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-indigo-200 transition-all group">
                         <div className="flex items-start gap-2 mb-3">

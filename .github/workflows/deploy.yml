@@ -10,28 +10,47 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
+        env:
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         with:
           host: ${{ secrets.DROPLET_IP }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          envs: VITE_TURNSTILE_SITE_KEY,TURNSTILE_SECRET_KEY,DEPLOY_TOKEN,OPENROUTER_API_KEY
           script: |
+            set -e  # Exit immediately if any command fails
+            export VITE_TURNSTILE_SITE_KEY=$VITE_TURNSTILE_SITE_KEY
+            export TURNSTILE_SECRET_KEY=$TURNSTILE_SECRET_KEY
+            export OPENROUTER_API_KEY=$OPENROUTER_API_KEY
+            export GIT_COMMIT_HASH=${{ github.sha }}
+
             # Create app directory if it doesn't exist (first run)
             mkdir -p /var/www/prompt-architect
             cd /var/www/prompt-architect
 
-            # Clone if empty, otherwise pull
-            if [ -d ".git" ]; then
-              git pull origin main
+            # Fix "dubious ownership" error
+            git config --global --add safe.directory /var/www/prompt-architect
+
+            # Clone if empty, otherwise fetch
+            if [ ! -d ".git" ]; then
+              git clone https://${DEPLOY_TOKEN}@github.com/${{ github.repository }} .
             else
-              git clone https://github.com/${{ github.repository }} .
+              # Update remote URL with token for authentication
+              git remote set-url origin https://${DEPLOY_TOKEN}@github.com/${{ github.repository }}
+              git fetch origin main
+              git reset --hard origin/main
             fi
 
+
             # Install dependencies and build
+
+
             npm ci
-            npm run build
+            VITE_TURNSTILE_SITE_KEY=$VITE_TURNSTILE_SITE_KEY npm run build
 
-            # Setup env if missing (manual step usually, but ensure it exists)
-            # You should populate .env manually on server first!
-
-            # Start/Restart with PM2
-            pm2 startOrRestart ecosystem.config.js --env production
+            # Start/Restart with PM2 (environment variables passed via ecosystem.config.js)
+            pm2 startOrRestart ecosystem.config.js --env production --update-env

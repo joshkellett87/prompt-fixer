@@ -24,9 +24,15 @@ export const fetchOptimizedPrompt = async (payload) => {
       // Try to parse error message
       try {
           const errorData = await response.json();
+          console.error("API Error Details:", errorData); // Log full details (e.g. upstream errors)
           throw new Error(errorData.error || `API Connection Failed: ${response.status}`);
       } catch (e) {
-          throw new Error(`API Connection Failed: ${response.status}`);
+          // If json parse fails or it was the throw above
+          if (e.message !== response.statusText && !e.message.startsWith('API')) {
+            // It was a JSON parse error
+             throw new Error(`API Connection Failed: ${response.status}`);
+          }
+          throw e; 
       }
   }
   return response.json();
