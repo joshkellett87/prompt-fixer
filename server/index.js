@@ -16,10 +16,10 @@ app.use((req, res, next) => {
       "default-src 'self'",
       "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
       "frame-src 'self' https://challenges.cloudflare.com",
-      "style-src 'self' 'unsafe-inline'", // Tailwind requires inline styles
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind requires inline styles, Google Fonts CSS
       "img-src 'self' data:",
       "connect-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-      "font-src 'self'",
+      "font-src 'self' https://fonts.gstatic.com", // Google Fonts
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
