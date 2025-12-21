@@ -4,6 +4,7 @@ const { verifyTurnstile, turnstileRateLimiter } = require('../middleware/turnsti
 const rateLimiter = require('../middleware/rateLimiter');
 
 const MODEL_NAME = "google/gemini-2.5-flash-lite-preview-09-2025";
+const POWER_MODEL_NAME = "google/gemini-3-flash-preview";
 
 router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, async (req, res) => {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -15,7 +16,7 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
 
   try {
     // Input validation: allow-list of permitted fields
-    const allowedFields = ['messages', 'temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty'];
+    const allowedFields = ['messages', 'temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty', 'usePowerModel'];
     const sanitizedBody = {};
 
     for (const field of allowedFields) {
@@ -53,9 +54,12 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
       return res.status(400).json({ error: 'Invalid request: max_tokens must be between 1 and 100000' });
     }
 
-    // Ensure the model is set, and enable reasoning
+    // Determine model with strict boolean check for security/correctness
+    const isPowerModel = sanitizedBody.usePowerModel === true;
+    const modelToUse = isPowerModel ? POWER_MODEL_NAME : MODEL_NAME;
+
     const requestBody = {
-      model: MODEL_NAME,
+      model: modelToUse,
       ...sanitizedBody
     };
 
@@ -64,13 +68,15 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
     requestBody.reasoning = {
       enabled: true
     };
-
+    
+    console.log(`[Generate] Using Model: ${modelToUse}`);
+    
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://promptfixer.co", // Optional, for including your app on openrouter.ai rankings.
-        "X-Title": "Prompt Architect", // Optional. Shows in rankings on openrouter.ai.
+        "HTTP-Referer": "https://promptfixer.co", 
+        "X-Title": "Prompt Architect",
         "Content-Type": "application/json"
       },
       body: JSON.stringify(requestBody)
@@ -80,7 +86,6 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
 
     if (!response.ok) {
         console.error('OpenRouter API Error:', response.status, JSON.stringify(data));
-        // Return generic error to client, log details server-side only
         return res.status(response.status === 500 ? 502 : response.status).json({
           error: 'Failed to process request with AI service'
         });

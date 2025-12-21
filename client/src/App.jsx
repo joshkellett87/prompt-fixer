@@ -62,6 +62,16 @@ const App = () => {
     }
   }, [history]);
 
+  // Check for Power Mode
+  const [usePowerModel, setUsePowerModel] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'power') {
+      setUsePowerModel(true);
+      console.log('Power Mode Activated: Using Gemini 3 Flash Preview');
+    }
+  }, []);
+
   // Turnstile Integration
   useEffect(() => {
     const renderWidget = () => {
@@ -151,7 +161,8 @@ const App = () => {
           { role: "system", content: getSystemInstruction(activeFramework, !!answers || isAutoRefine) },
           { role: "user", content: fullPrompt }
         ],
-        turnstileToken: window.turnstileToken
+        turnstileToken: window.turnstileToken,
+        usePowerModel
     });
 
     try {
@@ -437,9 +448,6 @@ const App = () => {
                       <Sparkles className="w-12 h-12 text-primary/20 mx-auto mb-3" />
                       <p className="text-sm font-medium text-muted-foreground">
                         Your optimized prompt will appear here
-                      </p>
-                      <p className="text-xs text-muted-foreground/70 mt-1">
-                        Share your idea above to get started
                       </p>
                     </div>
                   </div>
