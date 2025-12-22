@@ -14,6 +14,7 @@ import Send from 'lucide-react/dist/esm/icons/send';
 import Github from 'lucide-react/dist/esm/icons/github';
 import Linkedin from 'lucide-react/dist/esm/icons/linkedin';
 import { callApiWithBackoff, fetchOptimizedPrompt } from './api';
+import { useTurnstile } from './hooks/useTurnstile';
 import { getSystemInstruction } from './prompts/systemInstructions';
 import { Button } from './components/ui/button';
 import { Textarea } from './components/ui/textarea';
@@ -46,7 +47,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [usedFramework, setUsedFramework] = useState(null);
 
-  const widgetIdRef = useRef(null);
+
 
   // Save history to localStorage on update
   useEffect(() => {
@@ -68,57 +69,7 @@ const App = () => {
   }, []);
 
   // Turnstile Integration
-  useEffect(() => {
-    const renderWidget = () => {
-      if (window.turnstile && !widgetIdRef.current) {
-        const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-        if (!siteKey) {
-          console.warn("Turnstile Site Key is missing. Check your .env file or VITE_TURNSTILE_SITE_KEY variable.");
-          return;
-        }
-
-        window.turnstile.ready(() => {
-          try {
-            widgetIdRef.current = window.turnstile.render('#turnstile-container', {
-              sitekey: siteKey,
-              callback: (token) => {
-                window.turnstileToken = token;
-                setError(null);
-              },
-              'error-callback': (errorCode) => {
-                console.error('Turnstile error:', errorCode);
-                setError('Security verification failed. Please refresh the page.');
-              },
-              appearance: 'interaction-only',
-              theme: 'light',
-            });
-          } catch (e) {
-            console.error('Failed to render Turnstile:', e);
-          }
-        });
-      }
-    };
-
-    if (window.turnstile) {
-      renderWidget();
-    } else {
-      const interval = setInterval(() => {
-        if (window.turnstile) {
-          clearInterval(interval);
-          renderWidget();
-        }
-      }, 100);
-      return () => clearInterval(interval);
-    }
-
-    return () => {
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
-        widgetIdRef.current = null;
-      }
-      window.turnstileToken = null;
-    };
-  }, []);
+  const {  resetTurnstile } = useTurnstile(setError);
 
   // Primary Logic: Generation
   const generatePrompt = async (input, answers = "", isAutoRefine = false) => {
@@ -194,10 +145,9 @@ const App = () => {
         setHistory(prev => [historyItem, ...prev.filter(h => h.input !== input)].slice(0, 5));
       }
 
-      if (window.turnstile && widgetIdRef.current) {
-        window.turnstile.reset(widgetIdRef.current);
-        window.turnstileToken = null;
-      }
+
+
+      resetTurnstile();
 
     } catch (err) {
       setError(err.message || "Failed to build the prompt. Please try again.");

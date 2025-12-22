@@ -15,7 +15,7 @@ app.use((req, res, next) => {
     // Strict CSP for production - no unsafe-eval or unsafe-inline
     const csp = [
       "default-src 'self'",
-      "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
+      "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
       "frame-src 'self' https://challenges.cloudflare.com",
       "style-src 'self' 'unsafe-inline'", // Tailwind requires inline styles
       "img-src 'self' data:",
