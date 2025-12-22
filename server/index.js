@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const path = require('path');
 const apiRoutes = require('./routes/api');
 
@@ -16,10 +17,10 @@ app.use((req, res, next) => {
       "default-src 'self'",
       "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
       "frame-src 'self' https://challenges.cloudflare.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Tailwind requires inline styles, Google Fonts CSS
+      "style-src 'self' 'unsafe-inline'", // Tailwind requires inline styles
       "img-src 'self' data:",
       "connect-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-      "font-src 'self' https://fonts.gstatic.com", // Google Fonts
+      "font-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -38,6 +39,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// Compression middleware - must come before static file serving
+if (process.env.NODE_ENV === 'production') {
+  app.use(compression({
+    filter: (req, res) => {
+      if (req.headers['x-no-compression']) {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+    level: 6, // Balance between speed and compression
+    threshold: 1024 // Only compress files > 1KB
+  }));
+}
+
 // Middleware
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production'
@@ -53,9 +68,26 @@ app.use('/api', apiRoutes);
 
 // Static files (production)
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/dist')));
-  
+  // Serve static assets with long-term caching
+  app.use(express.static(path.join(__dirname, '../client/dist'), {
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res, filePath) => {
+      // Don't cache HTML - always fresh
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      } else if (filePath.match(/\.(js|css|woff2?|ttf|otf|eot|svg|png|jpg|jpeg|gif|webp|ico)$/)) {
+        // Hashed assets get long-term cache
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    }
+  }));
+
+  // SPA fallback - serve index.html with no-cache
   app.get('*', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
   });
 }

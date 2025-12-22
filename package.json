@@ -12,6 +12,7 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
@@ -30,6 +31,7 @@
     "postcss": "^8.4.35",
     "supertest": "^7.1.4",
     "tailwindcss": "^3.4.1",
+    "terser": "^5.44.1",
     "vite": "^7.3.0"
   }
 }

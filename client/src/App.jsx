@@ -1,20 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Wand2,
-  MessageSquarePlus,
-  Copy,
-  Check,
-  RefreshCw,
-  ChevronRight,
-  Sparkles,
-  ArrowRight,
-  Trash2,
-  History,
-  Microscope,
-  Send,
-  Github,
-  Linkedin
-} from 'lucide-react';
+import Wand2 from 'lucide-react/dist/esm/icons/wand-2';
+import MessageSquarePlus from 'lucide-react/dist/esm/icons/message-square-plus';
+import Copy from 'lucide-react/dist/esm/icons/copy';
+import Check from 'lucide-react/dist/esm/icons/check';
+import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
+import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
+import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
+import History from 'lucide-react/dist/esm/icons/history';
+import Microscope from 'lucide-react/dist/esm/icons/microscope';
+import Send from 'lucide-react/dist/esm/icons/send';
+import Github from 'lucide-react/dist/esm/icons/github';
+import Linkedin from 'lucide-react/dist/esm/icons/linkedin';
 import { callApiWithBackoff, fetchOptimizedPrompt } from './api';
 import { getSystemInstruction } from './prompts/systemInstructions';
 import { Button } from './components/ui/button';
