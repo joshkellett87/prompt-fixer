@@ -29,11 +29,11 @@ jobs:
             export GIT_COMMIT_HASH=${{ github.sha }}
 
             # Create app directory if it doesn't exist (first run)
-            mkdir -p /var/www/prompt-architect
-            cd /var/www/prompt-architect
+            mkdir -p /var/www/prompt-builder
+            cd /var/www/prompt-builder
 
             # Fix "dubious ownership" error
-            git config --global --add safe.directory /var/www/prompt-architect
+            git config --global --add safe.directory /var/www/prompt-builder
 
             # Clone if empty, otherwise fetch
             if [ ! -d ".git" ]; then

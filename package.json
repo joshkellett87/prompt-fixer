@@ -1,5 +1,5 @@
 {
-  "name": "prompt-architect",
+  "name": "prompt-builder",
   "version": "1.0.0",
   "scripts": {
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",

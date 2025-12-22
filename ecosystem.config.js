@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'prompt-architect',
+    name: 'prompt-builder',
     script: 'server/index.js',
     env_production: {
       NODE_ENV: 'production',

@@ -1,12 +1,25 @@
 import { useState, useEffect } from 'react';
 
-const HISTORY_STORAGE_KEY = 'prompt-architect-history';
+const HISTORY_STORAGE_KEY = 'prompt-builder-history';
+const OLD_STORAGE_KEY = 'prompt-architect-history';
 const MAX_HISTORY_ITEMS = 5;
 
 export const useHistory = () => {
   const [history, setHistory] = useState(() => {
     try {
-      const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+      // Try new key first
+      let saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+
+      // Migrate from old key if new key doesn't exist
+      if (!saved) {
+        const oldSaved = localStorage.getItem(OLD_STORAGE_KEY);
+        if (oldSaved) {
+          localStorage.setItem(HISTORY_STORAGE_KEY, oldSaved);
+          localStorage.removeItem(OLD_STORAGE_KEY);
+          saved = oldSaved;
+        }
+      }
+
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;

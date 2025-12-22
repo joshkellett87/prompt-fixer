@@ -21,7 +21,7 @@ import { Button } from './components/ui/button';
 import { Textarea } from './components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 
-const HISTORY_STORAGE_KEY = 'prompt-architect-history';
+const HISTORY_STORAGE_KEY = 'prompt-builder-history';
 
 const App = () => {
   // State Management
