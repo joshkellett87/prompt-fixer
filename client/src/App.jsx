@@ -12,11 +12,10 @@ import {
   History,
   Microscope,
   Send,
-  ChevronDown,
-  Zap
+  Github,
+  Linkedin
 } from 'lucide-react';
 import { callApiWithBackoff, fetchOptimizedPrompt } from './api';
-import { frameworks } from './prompts/frameworks';
 import { getSystemInstruction } from './prompts/systemInstructions';
 import { Button } from './components/ui/button';
 import { Textarea } from './components/ui/textarea';
@@ -47,10 +46,8 @@ const App = () => {
     return [];
   });
   const [error, setError] = useState(null);
-  const [activeFramework, setActiveFramework] = useState('SMART');
-  const [showFrameworks, setShowFrameworks] = useState(false);
+  const [usedFramework, setUsedFramework] = useState(null);
 
-  const dropdownRef = useRef(null);
   const widgetIdRef = useRef(null);
 
   // Save history to localStorage on update
@@ -125,17 +122,6 @@ const App = () => {
     };
   }, []);
 
-  // UI Event: Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowFrameworks(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   // Primary Logic: Generation
   const generatePrompt = async (input, answers = "", isAutoRefine = false) => {
     if (!input && !answers && !isAutoRefine) return;
@@ -158,7 +144,7 @@ const App = () => {
 
     const apiCall = () => fetchOptimizedPrompt({
         messages: [
-          { role: "system", content: getSystemInstruction(activeFramework, !!answers || isAutoRefine) },
+          { role: "system", content: getSystemInstruction('SMART', !!answers || isAutoRefine) },
           { role: "user", content: fullPrompt }
         ],
         turnstileToken: window.turnstileToken,
@@ -190,6 +176,12 @@ const App = () => {
         } catch (e) {
           setRefinementQuestions([]);
         }
+      }
+
+      // Parse framework used for transparency
+      const frameworkMatch = text.match(/\[FRAMEWORK\](.*?)\[\/FRAMEWORK\]/);
+      if (frameworkMatch) {
+        setUsedFramework(frameworkMatch[1].trim());
       }
 
       setOptimizedPrompt(cleanPrompt);
@@ -238,59 +230,13 @@ const App = () => {
     <div className="min-h-screen bg-background text-foreground font-sans p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <header className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-12">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary rounded-lg shadow-sm">
-              <Wand2 className="text-primary-foreground w-5 h-5" />
-            </div>
-            <h1 className="text-3xl font-serif font-medium text-foreground">
-              Prompt Fixer
-            </h1>
+        <header className="flex items-center gap-3 mb-12">
+          <div className="p-2.5 bg-primary rounded-lg shadow-sm">
+            <Wand2 className="text-primary-foreground w-5 h-5" />
           </div>
-
-          {/* Framework Selector - Smaller */}
-          <div className="flex flex-col gap-1.5 min-w-[200px]">
-            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide pl-1">
-              Framework
-            </label>
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setShowFrameworks(!showFrameworks)}
-                className="w-full px-3 py-2 bg-card border border-border rounded-lg text-xs font-medium text-foreground shadow-sm flex items-center justify-between hover:border-primary/30 transition-all"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Zap size={12} className={activeFramework === 'SMART' ? "text-accent-foreground" : "text-primary"} />
-                  <span>{activeFramework === 'SMART' ? 'Smart Mode' : activeFramework}</span>
-                </div>
-                <ChevronDown size={12} className={`transition-transform duration-200 ${showFrameworks ? 'rotate-180' : ''}`} />
-              </button>
-
-              {showFrameworks && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 p-1">
-                  <button
-                    onClick={() => { setActiveFramework('SMART'); setShowFrameworks(false); }}
-                    className={`w-full text-left px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      activeFramework === 'SMART' ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    Smart Mode
-                  </button>
-                  <div className="h-px bg-border my-1 mx-2" />
-                  {Object.keys(frameworks).map(f => (
-                    <button
-                      key={f}
-                      onClick={() => { setActiveFramework(f); setShowFrameworks(false); }}
-                      className={`w-full text-left px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
-                        activeFramework === f ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-muted'
-                      }`}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <h1 className="text-3xl font-serif font-medium text-foreground">
+            Prompt Fixer
+          </h1>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -432,8 +378,15 @@ const App = () => {
                     <p className="font-semibold text-sm text-foreground">Optimizing...</p>
                   </div>
                 ) : optimizedPrompt ? (
-                  <div className="whitespace-pre-wrap text-foreground text-sm font-mono leading-relaxed bg-muted/30 p-6 rounded-lg border border-border">
-                    {optimizedPrompt}
+                  <div>
+                    <div className="whitespace-pre-wrap text-foreground text-sm font-mono leading-relaxed bg-muted/30 p-6 rounded-lg border border-border">
+                      {optimizedPrompt}
+                    </div>
+                    {usedFramework && (
+                      <p className="text-xs text-muted-foreground mt-3 pl-1">
+                        Optimized using {usedFramework} framework
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-4 p-6">
@@ -501,6 +454,33 @@ const App = () => {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="mt-16 pb-8 text-center">
+        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+          <span>Built by Josh Kellett</span>
+          <div className="flex items-center gap-2">
+            <a
+              href="https://linkedin.com/in/joshkellett"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors"
+              aria-label="LinkedIn"
+            >
+              <Linkedin size={14} />
+            </a>
+            <a
+              href="https://github.com/joshkellett87"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors"
+              aria-label="GitHub"
+            >
+              <Github size={14} />
+            </a>
+          </div>
+        </div>
+      </footer>
 
       {/* Error Toast */}
       {error && (
