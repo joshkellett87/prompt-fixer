@@ -15,28 +15,26 @@ export const useTurnstile = (onError) => {
           return;
         }
 
-        window.turnstile.ready(() => {
-          try {
-            // Check if element exists before rendering
-            if (!document.getElementById('turnstile-container')) return;
-            
-            widgetIdRef.current = window.turnstile.render('#turnstile-container', {
-              sitekey: siteKey,
-              callback: (token) => {
-                window.turnstileToken = token;
-                setTurnstileReady(true);
-              },
-              'error-callback': (errorCode) => {
-                console.error('Turnstile error:', errorCode);
-                onError?.('Security verification failed. Please refresh the page.');
-              },
-              appearance: 'interaction-only',
-              theme: 'light',
-            });
-          } catch (e) {
-            console.error('Failed to render Turnstile:', e);
-          }
-        });
+        try {
+          // Check if element exists before rendering
+          if (!document.getElementById('turnstile-container')) return;
+          
+          widgetIdRef.current = window.turnstile.render('#turnstile-container', {
+            sitekey: siteKey,
+            callback: (token) => {
+              window.turnstileToken = token;
+              setTurnstileReady(true);
+            },
+            'error-callback': (errorCode) => {
+              console.error('Turnstile error:', errorCode);
+              onError?.('Security verification failed. Please refresh the page.');
+            },
+            appearance: 'interaction-only',
+            theme: 'light',
+          });
+        } catch (e) {
+          console.error('Failed to render Turnstile:', e);
+        }
       }
     };
 
