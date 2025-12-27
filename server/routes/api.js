@@ -76,7 +76,7 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": "https://promptfixer.co", 
-        "X-Title": "Prompt Builder",
+        "X-Title": "Prompt Fixer",
         "Content-Type": "application/json"
       },
       body: JSON.stringify(requestBody)
