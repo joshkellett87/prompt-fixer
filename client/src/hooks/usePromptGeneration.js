@@ -11,7 +11,6 @@ export const usePromptGeneration = () => {
 
   const generatePrompt = async (
     userInput,
-    activeFramework,
     answers = "",
     isAutoRefine = false,
     onSuccess = null,
@@ -37,7 +36,7 @@ export const usePromptGeneration = () => {
 
     const apiCall = () => fetchOptimizedPrompt({
       messages: [
-        { role: "system", content: getSystemInstruction(activeFramework, !!answers || isAutoRefine) },
+        { role: "system", content: getSystemInstruction(!!answers || isAutoRefine) },
         { role: "user", content: fullPrompt }
       ],
       turnstileToken: window.turnstileToken
@@ -94,14 +93,14 @@ export const usePromptGeneration = () => {
     }
   };
 
-  const handleBatchRefinement = (userInput, activeFramework, resetTurnstile) => {
+  const handleBatchRefinement = (userInput, resetTurnstile) => {
     const formattedAnswers = Object.entries(pendingAnswers)
       .filter(([_, answer]) => answer.trim() !== "")
       .map(([index, answer]) => `Q: ${refinementQuestions[index]} | A: ${answer}`)
       .join('\n');
 
     if (formattedAnswers) {
-      generatePrompt(userInput, activeFramework, formattedAnswers, false, null, resetTurnstile);
+      generatePrompt(userInput, formattedAnswers, false, null, resetTurnstile);
     }
   };
 

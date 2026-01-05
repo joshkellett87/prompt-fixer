@@ -18,16 +18,15 @@ const OUTPUT_FORMAT_REFINEMENT = `
 CRITICAL OUTPUT STRUCTURE:
 1. Use [PROMPT_START] and [PROMPT_END] tags around the optimized prompt.
 2. ONLY the final prompt to be copied goes inside these tags.
-3. Provide 0-3 refinement questions explicitly targeting remaining gaps.
+3. Provide 0-5 refinement questions explicitly targeting remaining gaps.
    - If the prompt is high-quality and complete, return an empty array: []
-   - ONLY ask if there is a critical missing piece of context.
+   - Prioritize questions about critical missing context over nice-to-haves
    - Output questions inside [QUESTIONS_START] and [QUESTIONS_END].
 4. State which framework you used: [FRAMEWORK]FRAMEWORK_NAME[/FRAMEWORK] (use exactly: RACE, MINIMAL, RISEN, ARIA, COVAR, or CRAFT)
 `;
 
 // Always uses intelligent framework selection (SMART mode)
-// The framework parameter is kept for backwards compatibility but ignored
-export const getSystemInstruction = (framework, isRefining = false) => {
+export const getSystemInstruction = (isRefining = false) => {
   const frameworkContext = `INTELLIGENT FRAMEWORK SELECTION
 
 You must analyze each request and select the most appropriate framework. Apply the selected framework's structure to your output.
@@ -35,7 +34,7 @@ You must analyze each request and select the most appropriate framework. Apply t
 ## Available Frameworks (6 total)
 
 ### 1. RACE (Quick/Simple)
-Use when: Short requests (under 15 words) with a single clear action. Summaries, definitions, translations, simple explanations.
+Use when: Short requests (under 20 words) with a single clear action. Summaries, definitions, translations, simple explanations.
 ${frameworks['RACE'].applicationGuide}
 
 ### 2. MINIMAL (Well-Formed/Pass-Through)
@@ -51,37 +50,65 @@ Use when: Comparisons, evaluations, research, decision-making, cause analysis, p
 ${frameworks['ARIA'].applicationGuide}
 
 ### 5. COVAR (Creative/Marketing)
-Use when: Marketing content, creative writing, persuasion, blogs, emails, social media, audience-focused content where AUDIENCE is a key factor.
+Use when: Content that EXPLICITLY targets a defined audience. Marketing campaigns, persuasive writing, sales copy, audience-specific messaging. The key trigger is explicit audience targeting (e.g., "for developers", "targeting millennials", "aimed at executives").
 ${frameworks['COVAR'].applicationGuide}
 
 ### 6. CRAFT (General Purpose)
-Use when: Tasks that don't fit other categories. Planning, organization, communication, instructions, personal writing, miscellaneous requests.
+Use when: Tasks that don't fit other categories. Planning, organization, communication, instructions, personal writing, general emails, miscellaneous requests.
 ${frameworks['CRAFT'].applicationGuide}
 
 ## Selection Rules
 
 **Priority Order (check in this EXACT order):**
 
-1. **SHORT + CLEAR → RACE**
-   If input is under 15 words AND has a single clear action → RACE
+0. **INVALID/VAGUE INPUT → Request Clarification**
+   If input is empty, nonsensical, under 3 words with no clear intent, or completely ambiguous:
+   - Return a minimal placeholder prompt asking for clarification
+   - Ask 1-2 questions to understand the user's actual intent
+   - Do NOT guess or hallucinate complex prompts from vague input
+   Examples of vague input: "help", "do something", "make it better", "idk", gibberish
+
+1. **SHORT + SINGLE ACTION → RACE**
+   If input is under 20 words AND has a single clear action → RACE
+   Must have identifiable verb + object (e.g., "summarize this", "translate to French", "explain quantum computing")
    (Check this FIRST, regardless of topic keywords)
 
 2. **ALREADY STRUCTURED → MINIMAL**
    If input has role definition, formatting, or specific constraints → MINIMAL
-   (Use if 2+ of these apply: starts with "You are...", has headers/bullets, specifies output format, 50+ words with details)
+   Use if 2+ of these indicators apply:
+   - Starts with "You are...", "Act as...", or similar role definition
+   - Contains headers, bullets, or numbered lists
+   - Specifies output format (e.g., "respond in JSON", "use markdown")
+   - 50+ words with detailed, specific instructions
+   
+   **Concrete Examples (use MINIMAL for these):**
+   - "You are a senior Python developer. Review this code for security issues. Output as a bulleted list."
+   - "Act as a legal advisor. Explain this contract clause. Keep response under 200 words."
+   - Input with markdown headers or structured formatting already present
 
 3. **TECHNICAL → RISEN**
-   If request involves code, data, logic, APIs, algorithms → RISEN
+   If request involves code, data, logic, APIs, algorithms, debugging, system design → RISEN
 
 4. **ANALYTICAL → ARIA**
-   If request involves analysis, comparison, research, evaluation, decision-making → ARIA
+   If request involves analysis, comparison, research, evaluation, decision-making, investigation → ARIA
 
-5. **AUDIENCE-FOCUSED → COVAR**
-   If request involves marketing, persuasion, OR explicitly mentions an audience to target → COVAR
+5. **EXPLICIT AUDIENCE TARGETING → COVAR**
+   If request EXPLICITLY mentions a target audience or demographic → COVAR
+   Trigger phrases: "for [audience]", "targeting [demographic]", "aimed at [group]", "to convince [people]"
+   Also use for: marketing campaigns, sales copy, persuasive content with clear audience
+   **Note:** General creative writing without explicit audience → use CRAFT instead
 
 6. **EVERYTHING ELSE → CRAFT**
-   General tasks, planning, communication, organization, instructions, personal writing → CRAFT
+   General tasks, planning, communication, organization, instructions, personal writing, general emails → CRAFT
    This is the default for anything that doesn't match above categories.
+
+## Multi-Intent Handling
+
+When a request spans multiple categories (e.g., "Write Python code to analyze sales data and create a comparison report"):
+1. Identify the PRIMARY goal (what is the main deliverable?)
+2. Choose framework based on primary goal
+3. Incorporate relevant elements from secondary frameworks as needed
+Example: Code + Analysis → RISEN (primary: code), but include ARIA-style comparison structure in the output
 
 ## Critical: Proportionality
 
@@ -90,11 +117,12 @@ ${frameworks['CRAFT'].applicationGuide}
 - Do NOT add structure for structure's sake
 
 ## Your Task
-1. Count the words in the user's request
-2. Check the priority order top-to-bottom
-3. Select the FIRST matching framework
-4. Apply that framework's structure
-5. Report which framework you used`;
+1. Check for invalid/vague input first (tier 0)
+2. Count the words in the user's request
+3. Check the priority order top-to-bottom
+4. Select the FIRST matching framework
+5. Apply that framework's structure
+6. Report which framework you used`;
 
   let finalPrompt = corePrompt.replace('{{FRAMEWORK_CONTEXT}}', frameworkContext);
 

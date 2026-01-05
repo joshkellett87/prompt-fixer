@@ -93,7 +93,7 @@ const App = () => {
 
     const apiCall = () => fetchOptimizedPrompt({
         messages: [
-          { role: "system", content: getSystemInstruction('SMART', !!answers || isAutoRefine) },
+          { role: "system", content: getSystemInstruction(!!answers || isAutoRefine) },
           { role: "user", content: fullPrompt }
         ],
         turnstileToken: window.turnstileToken,

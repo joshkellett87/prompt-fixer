@@ -29,12 +29,12 @@ Instead of asking users to choose a framework, Prompt Fixer analyzes your reques
 
 | Framework | Meaning | Best For |
 | :--- | :--- | :--- |
-| **RACE** | Role, Action, Context, Expectation | Quick, simple requests under 15 words. |
+| **RACE** | Role, Action, Context, Expectation | Quick, simple requests under 20 words with a single action. |
 | **MINIMAL** | Light Touch, Preserve Intent | Already well-structured prompts that need light polish only. |
 | **RISEN** | Role, Instruction, Structure, Examples, Nuance | Technical tasks, coding, and data analysis. |
 | **ARIA** | Angle, Research, Investigation, Assessment | Analysis, research, comparisons, and decision-making. |
-| **COVAR** | Context, Objective, Voice, Audience, Response | Marketing, creative writing, and audience-focused content. |
-| **CRAFT** | Context, Role, Action, Format, Target | General-purpose tasks that don't fit other categories. |
+| **COVAR** | Context, Objective, Voice, Audience, Response | Content with explicit audience targeting—marketing campaigns, sales copy, persuasive messaging. |
+| **CRAFT** | Context, Role, Action, Format, Target | General-purpose tasks including creative writing, emails, and miscellaneous requests. |
 
 ### 2. Proportionality Principle
 
@@ -54,9 +54,11 @@ After generation, you may receive 0-5 targeted questions to fill any gaps. If yo
 
 - ✅ **Zero prompt engineering knowledge required**
 - ✅ **Intelligent framework selection** (transparent—you see which was used)
+- ✅ **Edge case handling** (graceful prompts for vague/invalid input)
+- ✅ **Multi-intent support** (handles hybrid requests intelligently)
 - ✅ **Context preservation** (no detail loss)
 - ✅ **Proportional output** (no over-engineering)
-- ✅ **Interactive refinement** (optional follow-up questions)
+- ✅ **Interactive refinement** (0-5 optional follow-up questions)
 - ✅ **Anti-hallucination safeguards** (for factual/research prompts)
 - ✅ **Clean, focused UI** (no framework selection paralysis)
 
@@ -84,12 +86,15 @@ The system checks these rules in order and uses the **first match**:
 
 | Priority | Criteria | Framework |
 | :--- | :--- | :--- |
-| 1 | Short + clear (< 15 words) | **RACE** |
+| 0 | Invalid/vague input (under 3 words, gibberish, no clear intent) | **Request clarification** |
+| 1 | Short + single action (< 20 words with verb + object) | **RACE** |
 | 2 | Already structured (has role, formatting, constraints) | **MINIMAL** |
-| 3 | Technical / Code / Data / APIs | **RISEN** |
-| 4 | Analysis / Research / Comparison | **ARIA** |
-| 5 | Marketing / Audience-focused / Persuasion | **COVAR** |
-| 6 | Everything else (general tasks) | **CRAFT** |
+| 3 | Technical / Code / Data / APIs / System Design | **RISEN** |
+| 4 | Analysis / Research / Comparison / Evaluation | **ARIA** |
+| 5 | Explicit audience targeting ("for [audience]", "targeting [demographic]") | **COVAR** |
+| 6 | Everything else (general tasks, creative writing, emails) | **CRAFT** |
+
+**Multi-Intent Handling:** When a request spans categories (e.g., "Write Python code to analyze sales data"), the system identifies the primary goal and applies that framework while incorporating relevant elements from secondary frameworks.
 
 ---
 
