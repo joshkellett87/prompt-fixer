@@ -15,7 +15,7 @@ A professional prompt optimization tool that automatically structures your rough
 
 Most people struggle to write effective AI prompts. The difference between "write a blog post about coffee" and a well-structured prompt with clear role definition, audience context, and success criteria can be **dramatic** in output quality.
 
-> **The problem:** Prompt engineering frameworks (CO-STAR, RISEN, RACE) are powerful, but knowing which to use and how to apply them requires expertise most users don't have.
+> **The problem:** Prompt engineering frameworks are powerful, but knowing which to use and how to apply them requires expertise most users don't have.
 
 > **The solution:** Prompt Fixer uses intelligent framework selection to automatically choose and apply the right structure for your task—no prompt engineering knowledge required.
 
@@ -25,13 +25,16 @@ Most people struggle to write effective AI prompts. The difference between "writ
 
 ### 1. Intelligent Framework Selection
 
-Instead of asking users to choose a framework, Prompt Fixer analyzes your request and automatically selects the best approach:
+Instead of asking users to choose a framework, Prompt Fixer analyzes your request and automatically selects the best approach from 6 specialized frameworks:
 
 | Framework | Meaning | Best For |
 | :--- | :--- | :--- |
-| **CO-STAR** | Context, Objective, Style, Tone, Audience, Response | Marketing, creative writing, and audience-focused content. |
-| **RISEN** | Role, Instruction, Structure, Examples, Nuance | Technical tasks, coding, and data analysis—emphasizes few-shot learning. |
-| **RACE** | Role, Action, Context, Expectation | Quick, simple requests where full structure would be overkill. |
+| **RACE** | Role, Action, Context, Expectation | Quick, simple requests under 15 words. |
+| **MINIMAL** | Light Touch, Preserve Intent | Already well-structured prompts that need light polish only. |
+| **RISEN** | Role, Instruction, Structure, Examples, Nuance | Technical tasks, coding, and data analysis. |
+| **ARIA** | Angle, Research, Investigation, Assessment | Analysis, research, comparisons, and decision-making. |
+| **COVAR** | Context, Objective, Voice, Audience, Response | Marketing, creative writing, and audience-focused content. |
+| **CRAFT** | Context, Role, Action, Format, Target | General-purpose tasks that don't fit other categories. |
 
 ### 2. Proportionality Principle
 
@@ -43,7 +46,7 @@ The optimization process is **additive, never subtractive**. Every detail you pr
 
 ### 4. Refinement Loop
 
-After generation, you receive 3-5 targeted questions to fill any gaps. Answer what's relevant, ignore the rest. Each refinement makes the prompt more precise.
+After generation, you may receive 0-5 targeted questions to fill any gaps. If your prompt is already complete, no questions are asked. Answer what's relevant, ignore the rest. Each refinement makes the prompt more precise.
 
 ---
 
@@ -68,20 +71,25 @@ After generation, you receive 3-5 targeted questions to fill any gaps. Answer wh
 - **Security:** Cloudflare Turnstile for abuse prevention
 
 ### Prompt Engineering Strategy
-- Role-first architecture enforcement
-- Chain-of-thought scaffolding for complex tasks
-- Success criteria definition
-- Few-shot learning guidance (RISEN framework)
-- Markdown-formatted output for readability
+- **Conditional role definitions** (only added when helpful, not forced)
+- **Chain-of-thought scaffolding** for complex tasks only
+- **Success criteria** for multi-step tasks only
+- **Few-shot learning guidance** (RISEN framework for technical tasks)
+- **Proportional output** (simple input → simple output)
+- **Tone preservation** (respects user's style choices)
 
 ### Selection Logic
 
+The system checks these rules in order and uses the **first match**:
+
 | Priority | Criteria | Framework |
 | :--- | :--- | :--- |
-| 1 | Code / Data / Logic | **RISEN** |
-| 2 | Audience / Persuasion / Marketing | **CO-STAR** |
-| 3 | Simple queries (< 15 words) | **RACE** |
-| 4 | Uncertain / General | **CO-STAR** (Vertical fallback) |
+| 1 | Short + clear (< 15 words) | **RACE** |
+| 2 | Already structured (has role, formatting, constraints) | **MINIMAL** |
+| 3 | Technical / Code / Data / APIs | **RISEN** |
+| 4 | Analysis / Research / Comparison | **ARIA** |
+| 5 | Marketing / Audience-focused / Persuasion | **COVAR** |
+| 6 | Everything else (general tasks) | **CRAFT** |
 
 ---
 
@@ -115,11 +123,12 @@ See `.env.example` for all required and optional environment variables. You'll n
 
 ## Use Cases
 
-*   **Marketers:** Generate campaign briefs, ad copy prompts, persona-driven content
-*   **Engineers:** Create precise code generation prompts with few-shot examples
-*   **Researchers:** Structure analysis tasks with anti-hallucination safeguards
-*   **Content Creators:** Transform vague ideas into structured writing prompts
-*   **Product Teams:** Draft clear feature specifications and user story prompts
+*   **Marketers:** Generate campaign briefs, ad copy prompts, persona-driven content → *COVAR*
+*   **Engineers:** Create precise code generation prompts with few-shot examples → *RISEN*
+*   **Researchers:** Structure analysis and comparison tasks → *ARIA*
+*   **Content Creators:** Transform vague ideas into structured writing prompts → *CRAFT*
+*   **Product Teams:** Draft clear feature specifications and user story prompts → *CRAFT*
+*   **Everyone:** Quick translations, summaries, definitions → *RACE*
 
 ---
 
