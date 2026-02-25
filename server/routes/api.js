@@ -58,6 +58,9 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
     const isPowerModel = sanitizedBody.usePowerModel === true;
     const modelToUse = isPowerModel ? POWER_MODEL_NAME : MODEL_NAME;
 
+    // Remove usePowerModel to avoid sending unknown parameters to the LLM API
+    delete sanitizedBody.usePowerModel;
+
     const requestBody = {
       model: modelToUse,
       ...sanitizedBody
