@@ -84,6 +84,9 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
     const tier = isPowerModel ? MODELS.power : MODELS.default;
     const modelToUse = tier.name;
 
+    // Remove usePowerModel to avoid sending unknown parameters to the LLM API
+    delete sanitizedBody.usePowerModel;
+
     const requestBody = {
       model: modelToUse,
       ...sanitizedBody

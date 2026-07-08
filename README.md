@@ -15,7 +15,7 @@ A professional prompt optimization tool that automatically structures your rough
 
 Most people struggle to write effective AI prompts. The difference between "write a blog post about coffee" and a well-structured prompt with clear role definition, audience context, and success criteria can be **dramatic** in output quality.
 
-> **The problem:** Prompt engineering frameworks (CO-STAR, RISEN, RACE) are powerful, but knowing which to use and how to apply them requires expertise most users don't have.
+> **The problem:** Prompt engineering frameworks are powerful, but knowing which to use and how to apply them requires expertise most users don't have.
 
 > **The solution:** PromptFixer uses intelligent framework selection to automatically choose and apply the right structure for your task—no prompt engineering knowledge required.
 
@@ -25,13 +25,16 @@ Most people struggle to write effective AI prompts. The difference between "writ
 
 ### 1. Intelligent Framework Selection
 
-Instead of asking users to choose a framework, PromptFixer analyzes your request and automatically selects the best approach:
+Instead of asking users to choose a framework, PromptFixer analyzes your request and automatically selects the best approach from 6 specialized frameworks:
 
 | Framework | Meaning | Best For |
 | :--- | :--- | :--- |
-| **CO-STAR** | Context, Objective, Style, Tone, Audience, Response | Marketing, creative writing, and audience-focused content. |
-| **RISEN** | Role, Instructions, Steps, End-goal, Narrowing | Technical tasks, coding, and data analysis—emphasizes step-based instructions and tight scope. |
-| **RACE** | Role, Action, Context, Expectation | Quick, simple requests where full structure would be overkill. |
+| **RACE** | Role, Action, Context, Expectation | Quick, simple requests under 20 words with a single action. |
+| **MINIMAL** | Light Touch, Preserve Intent | Already well-structured prompts that need light polish only. |
+| **RISEN** | Role, Instruction, Structure, Examples, Nuance | Technical tasks, coding, and data analysis. |
+| **ARIA** | Angle, Research, Investigation, Assessment | Analysis, research, comparisons, and decision-making. |
+| **COVAR** | Context, Objective, Voice, Audience, Response | Content with explicit audience targeting—marketing campaigns, sales copy, persuasive messaging. |
+| **CRAFT** | Context, Role, Action, Format, Target | General-purpose tasks including creative writing, emails, and miscellaneous requests. |
 
 ### 2. Proportionality Principle
 
@@ -43,7 +46,7 @@ The optimization process is **additive, never subtractive**. Every detail you pr
 
 ### 4. Refinement Loop
 
-After generation, you receive 3-5 targeted questions to fill any gaps. Answer what's relevant, ignore the rest. Each refinement makes the prompt more precise.
+After generation, you may receive 0-5 targeted questions to fill any gaps. If your prompt is already complete, no questions are asked. Answer what's relevant, ignore the rest. Each refinement makes the prompt more precise.
 
 ---
 
@@ -51,9 +54,11 @@ After generation, you receive 3-5 targeted questions to fill any gaps. Answer wh
 
 - ✅ **Zero prompt engineering knowledge required**
 - ✅ **Intelligent framework selection** (transparent—you see which was used)
+- ✅ **Edge case handling** (graceful prompts for vague/invalid input)
+- ✅ **Multi-intent support** (handles hybrid requests intelligently)
 - ✅ **Context preservation** (no detail loss)
 - ✅ **Proportional output** (no over-engineering)
-- ✅ **Interactive refinement** (optional follow-up questions)
+- ✅ **Interactive refinement** (0-5 optional follow-up questions)
 - ✅ **Anti-hallucination safeguards** (for factual/research prompts)
 - ✅ **Clean, focused UI** (no framework selection paralysis)
 
@@ -69,20 +74,28 @@ After generation, you receive 3-5 targeted questions to fill any gaps. Answer wh
 - **Security:** Cloudflare Turnstile for abuse prevention
 
 ### Prompt Engineering Strategy
-- Authoritative role applied only when it adds value (not a blanket mandate)
-- Conditional chain-of-thought—reasoning cues added only for genuinely multi-step tasks, since modern reasoning models think natively
-- Success criteria definition
-- Few-shot examples where they lock in output format
-- Markdown-formatted output for readability
+- **Conditional role definitions** (only added when helpful, not forced)
+- **Chain-of-thought scaffolding** for complex tasks only
+- **Success criteria** for multi-step tasks only
+- **Few-shot learning guidance** (RISEN framework for technical tasks)
+- **Proportional output** (simple input → simple output)
+- **Tone preservation** (respects user's style choices)
 
 ### Selection Logic
 
+The system checks these rules in order and uses the **first match**:
+
 | Priority | Criteria | Framework |
 | :--- | :--- | :--- |
-| 1 | Code / Data / Logic | **RISEN** |
-| 2 | Audience / Persuasion / Marketing | **CO-STAR** |
-| 3 | Simple queries (< 15 words) | **RACE** |
-| 4 | Uncertain / General | **CO-STAR** (Vertical fallback) |
+| 0 | Invalid/vague input (under 3 words, gibberish, no clear intent) | **Request clarification** |
+| 1 | Short + single action (< 20 words with verb + object) | **RACE** |
+| 2 | Already structured (has role, formatting, constraints) | **MINIMAL** |
+| 3 | Technical / Code / Data / APIs / System Design | **RISEN** |
+| 4 | Analysis / Research / Comparison / Evaluation | **ARIA** |
+| 5 | Explicit audience targeting ("for [audience]", "targeting [demographic]") | **COVAR** |
+| 6 | Everything else (general tasks, creative writing, emails) | **CRAFT** |
+
+**Multi-Intent Handling:** When a request spans categories (e.g., "Write Python code to analyze sales data"), the system identifies the primary goal and applies that framework while incorporating relevant elements from secondary frameworks.
 
 ---
 
@@ -116,11 +129,12 @@ See `.env.example` for all required and optional environment variables. You'll n
 
 ## Use Cases
 
-*   **Marketers:** Generate campaign briefs, ad copy prompts, persona-driven content
-*   **Engineers:** Create precise code generation prompts with few-shot examples
-*   **Researchers:** Structure analysis tasks with anti-hallucination safeguards
-*   **Content Creators:** Transform vague ideas into structured writing prompts
-*   **Product Teams:** Draft clear feature specifications and user story prompts
+*   **Marketers:** Generate campaign briefs, ad copy prompts, persona-driven content → *COVAR*
+*   **Engineers:** Create precise code generation prompts with few-shot examples → *RISEN*
+*   **Researchers:** Structure analysis and comparison tasks → *ARIA*
+*   **Content Creators:** Transform vague ideas into structured writing prompts → *CRAFT*
+*   **Product Teams:** Draft clear feature specifications and user story prompts → *CRAFT*
+*   **Everyone:** Quick translations, summaries, definitions → *RACE*
 
 ---
 
