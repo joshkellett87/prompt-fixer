@@ -14,16 +14,16 @@ export const frameworks = {
 `
   },
   'RISEN': {
-    label: 'Role, Instruction, Structure, Examples, Nuance',
-    description: 'Best for technical tasks, coding, and logical analysis. Emphasizes precision and few-shot learning.',
+    label: 'Role, Instructions, Steps, End-goal, Narrowing',
+    description: 'Best for technical tasks, coding, and logical analysis. Emphasizes precise, step-based instructions and tight scope.',
     useCase: 'Technical & Data',
     selectionCriteria: ['coding', 'programming', 'data analysis', 'technical', 'json', 'xml', 'script', 'logic', 'math', 'algorithm', 'function', 'api', 'database'],
     applicationGuide: `
 ### [R] Role - Acting as who? (Senior Engineer, Data Scientist, Security Analyst)
-### [I] Instruction - What specific commands to execute? Be precise and unambiguous.
-### [S] Structure - How should the output be organized? (Table, Code block, List, JSON schema)
-### [E] Examples - Demonstrate the exact transformation with 1-2 input→output pairs. This is critical for technical tasks—show the AI the pattern you want through few-shot learning.
-### [N] Nuance - What constraints, edge cases, or reasoning approach? For complex logic, include "Think through your approach step-by-step before writing code."
+### [I] Instructions - What specific task to perform? Be precise and unambiguous.
+### [S] Steps - The ordered steps to follow to complete the task. Where 1-2 concrete input→output examples would lock in the pattern, include them (few-shot is the single biggest lever for format reliability).
+### [E] End-goal - What does success look like? Define the desired outcome and output format (Table, Code block, JSON schema, etc.).
+### [N] Narrowing - Constraints, edge cases, and scope limits that focus the response. Only add explicit "reason step-by-step" cues when the task needs genuine multi-step decomposition.
 `
   },
   'RACE': {

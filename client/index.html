@@ -9,9 +9,22 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="description" content="PromptFixer turns vague ideas into clear, high-performance AI prompts — no prompt engineering knowledge required." />
     <!-- CSP is set via HTTP headers in production for stronger security -->
-    <title>Prompt Fixer</title>
+    <title>PromptFixer</title>
 
+    <!-- Apply theme before paint to avoid a flash of the wrong color scheme -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("promptfixer-theme");
+          var dark = stored
+            ? stored === "dark"
+            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
