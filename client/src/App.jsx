@@ -28,7 +28,6 @@ const THEME_STORAGE_KEY = 'promptfixer-theme';
 // Curated, unobtrusive starter prompts (shown only when the input is empty + unfocused).
 const EXAMPLE_CHIPS = [
   'Critique my project plan',
-  'Write a landing page for an organic tea brand',
   'Summarize this report for a busy executive',
   'Turn my rough notes into a study guide',
 ];
@@ -232,11 +231,11 @@ const App = () => {
           <button
             type="button"
             onClick={toggleTheme}
-            className="shrink-0 p-2.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors cursor-pointer"
+            className="shrink-0 p-2 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors cursor-pointer"
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
-            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
         </header>
 
@@ -258,8 +257,8 @@ const App = () => {
                     <div className="relative">
                       <Textarea
                         ref={textareaRef}
-                        className="min-h-[220px] max-h-[500px] resize-y bg-muted/50 border-border focus-visible:ring-primary text-sm leading-relaxed"
-                        placeholder="What should the AI do? E.g. 'Critique this project plan' or 'Write a landing page for an organic tea brand'..."
+                        className="min-h-[260px] max-h-[500px] resize-y bg-muted/50 border-border focus-visible:ring-primary text-sm leading-relaxed"
+                        placeholder="Describe what you want the AI to do — the rougher the better. PromptFixer rewrites it into a clear, structured prompt that gets better results."
                         value={userInput}
                         onChange={(e) => setUserInput(e.target.value)}
                         onFocus={() => setInputFocused(true)}
