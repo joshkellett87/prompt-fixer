@@ -9,18 +9,29 @@ import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import History from 'lucide-react/dist/esm/icons/history';
-import Microscope from 'lucide-react/dist/esm/icons/microscope';
 import Send from 'lucide-react/dist/esm/icons/send';
 import Github from 'lucide-react/dist/esm/icons/github';
 import Linkedin from 'lucide-react/dist/esm/icons/linkedin';
+import Sun from 'lucide-react/dist/esm/icons/sun';
+import Moon from 'lucide-react/dist/esm/icons/moon';
 import { callApiWithBackoff, fetchOptimizedPrompt } from './api';
 import { useTurnstile } from './hooks/useTurnstile';
 import { getSystemInstruction } from './prompts/systemInstructions';
+import { cn } from './lib/utils';
 import { Button } from './components/ui/button';
 import { Textarea } from './components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 
 const HISTORY_STORAGE_KEY = 'prompt-builder-history';
+const THEME_STORAGE_KEY = 'promptfixer-theme';
+
+// Curated, unobtrusive starter prompts (shown only when the input is empty + unfocused).
+const EXAMPLE_CHIPS = [
+  'Critique my project plan',
+  'Write a landing page for an organic tea brand',
+  'Summarize this report for a busy executive',
+  'Turn my rough notes into a study guide',
+];
 
 const App = () => {
   // State Management
@@ -46,8 +57,32 @@ const App = () => {
   });
   const [error, setError] = useState(null);
   const [usedFramework, setUsedFramework] = useState(null);
+  const [inputFocused, setInputFocused] = useState(false);
+  const textareaRef = useRef(null);
 
+  // Theme: initialized from the class set by the anti-FOUC script in index.html.
+  const [theme, setTheme] = useState(() =>
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+      ? 'dark'
+      : 'light'
+  );
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('dark', theme === 'dark');
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (e) {
+      console.warn('Failed to persist theme:', e);
+    }
+  }, [theme]);
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
+  const applyExample = (text) => {
+    setUserInput(text);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  };
+
+  const showChips = !userInput.trim();
 
   // Save history to localStorage on update
   useEffect(() => {
@@ -64,7 +99,7 @@ const App = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('mode') === 'power') {
       setUsePowerModel(true);
-      console.log('Power Mode Activated: Using Gemini 3 Flash Preview');
+      console.log('Power Mode Activated: using Gemini 3 Flash Preview');
     }
   }, []);
 
@@ -72,8 +107,8 @@ const App = () => {
   const {  resetTurnstile } = useTurnstile(setError);
 
   // Primary Logic: Generation
-  const generatePrompt = async (input, answers = "", isAutoRefine = false) => {
-    if (!input && !answers && !isAutoRefine) return;
+  const generatePrompt = async (input, answers = "") => {
+    if (!input && !answers) return;
 
     if (!window.turnstileToken && import.meta.env.PROD) {
        setError("Please complete the security check (Captcha) below.");
@@ -83,17 +118,13 @@ const App = () => {
     setIsLoading(true);
     setError(null);
 
-    let fullPrompt = answers
+    const fullPrompt = answers
       ? `## Current Optimized Prompt (BASE):\n${optimizedPrompt}\n\n## Original Intent:\n${userInput}\n\n## User's Refinement Answers:\n${answers}\n\n## Task: Integrate answers while preserving all existing content. Enhance the prompt structure without losing any details.`
       : `Original Intent: ${input}`;
 
-    if (isAutoRefine) {
-      fullPrompt = `Current Draft:\n${optimizedPrompt}\n\nTask: Perform a structural audit. Remove redundancy and sharpen logic. IMPORTANT: Preserve all specific details, constraints, and intent from the Current Draft. Return only the improved prompt inside [PROMPT_START] tags.`;
-    }
-
     const apiCall = () => fetchOptimizedPrompt({
         messages: [
-          { role: "system", content: getSystemInstruction(!!answers || isAutoRefine) },
+          { role: "system", content: getSystemInstruction(!!answers) },
           { role: "user", content: fullPrompt }
         ],
         turnstileToken: window.turnstileToken,
@@ -135,7 +166,7 @@ const App = () => {
 
       setOptimizedPrompt(cleanPrompt);
       setPendingAnswers({});
-      if (!answers && !isAutoRefine) {
+      if (!answers) {
         const historyItem = {
           input,
           optimizedPrompt: cleanPrompt,
@@ -178,13 +209,35 @@ const App = () => {
     <div className="min-h-screen bg-background text-foreground font-sans p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <header className="flex items-center gap-3 mb-12">
-          <div className="p-2.5 bg-primary rounded-lg shadow-sm">
-            <Wand2 className="text-primary-foreground w-5 h-5" />
+        <header className="flex items-start justify-between gap-4 mb-10 md:mb-12">
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="PromptFixer logo"
+              width={44}
+              height={44}
+              className="w-11 h-11 rounded-lg shadow-sm border border-border bg-white object-contain p-1 shrink-0"
+            />
+            <div>
+              <h1 className="text-3xl font-serif font-medium text-foreground leading-tight">
+                PromptFixer
+              </h1>
+              {/* Micro-hero: slim value-prop so novices instantly get what it does */}
+              <p className="text-sm text-muted-foreground mt-1 max-w-md">
+                Turn rough ideas into clear, high-performance AI prompts.
+              </p>
+            </div>
           </div>
-          <h1 className="text-3xl font-serif font-medium text-foreground">
-            Prompt Fixer
-          </h1>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="shrink-0 p-2.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors cursor-pointer"
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -201,55 +254,75 @@ const App = () => {
                       Your Idea
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Textarea
-                      className="min-h-[180px] resize-none bg-muted/50 border-border focus-visible:ring-primary text-sm leading-relaxed"
-                      placeholder="What should the AI do? E.g. 'Critique this project plan' or 'Write a landing page for an organic tea brand'..."
-                      value={userInput}
-                      onChange={(e) => setUserInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                          e.preventDefault();
-                          if (userInput.trim() && window.turnstileToken && !isLoading) {
-                            generatePrompt(userInput);
+                  <CardContent className="space-y-3">
+                    <div className="relative">
+                      <Textarea
+                        ref={textareaRef}
+                        className="min-h-[220px] max-h-[500px] resize-y bg-muted/50 border-border focus-visible:ring-primary text-sm leading-relaxed"
+                        placeholder="What should the AI do? E.g. 'Critique this project plan' or 'Write a landing page for an organic tea brand'..."
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        onFocus={() => setInputFocused(true)}
+                        onBlur={() => setInputFocused(false)}
+                        onKeyDown={(e) => {
+                          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            if (userInput.trim() && window.turnstileToken && !isLoading) {
+                              generatePrompt(userInput);
+                            }
                           }
-                        }
-                      }}
-                    />
+                        }}
+                      />
 
-                    {/* Turnstile Widget */}
-                    <div className="flex justify-center min-h-[65px]">
+                      {/* Example chips live INSIDE the input (absolutely positioned) so
+                          showing/hiding them never shifts surrounding layout. Only shown
+                          when the input is empty AND unfocused. */}
+                      {showChips && (
+                        <div
+                          className={cn(
+                            // Hidden on phones (they'd overlap the placeholder + eat half the box);
+                            // shown inside the input from `sm` up where there's room.
+                            'absolute inset-x-3 bottom-3 hidden sm:flex flex-wrap gap-2',
+                            inputFocused ? 'animate-chip-out pointer-events-none' : 'animate-chip-in'
+                          )}
+                          aria-hidden={inputFocused}
+                        >
+                          {EXAMPLE_CHIPS.map((chip) => (
+                            <button
+                              key={chip}
+                              type="button"
+                              tabIndex={inputFocused ? -1 : 0}
+                              onClick={() => applyExample(chip)}
+                              className="text-xs text-muted-foreground bg-card hover:bg-accent hover:text-accent-foreground border border-border rounded-full px-3 py-1.5 transition-colors cursor-pointer shadow-sm"
+                            >
+                              {chip}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Turnstile Widget — interaction-only, so it usually renders nothing;
+                        no reserved height keeps the button tight to the input. */}
+                    <div className="flex justify-center empty:hidden">
                       <div id="turnstile-container"></div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                        onClick={() => generatePrompt(userInput)}
-                        disabled={!userInput.trim() || isLoading || !window.turnstileToken}
-                        size="lg"
-                        className="font-semibold"
-                      >
-                        {isLoading ? (
-                          <RefreshCw className="animate-spin" size={16} />
-                        ) : (
-                          <>
-                            <Wand2 size={16} />
-                            Build Prompt
-                          </>
-                        )}
-                      </Button>
-
-                      <Button
-                        onClick={() => generatePrompt(userInput, "", true)}
-                        disabled={isLoading || !optimizedPrompt}
-                        variant="outline"
-                        size="lg"
-                        className="font-semibold"
-                      >
-                        <Microscope size={16} />
-                        Auto-Refine
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={() => generatePrompt(userInput)}
+                      disabled={!userInput.trim() || isLoading || !window.turnstileToken}
+                      size="lg"
+                      className="w-full font-semibold"
+                    >
+                      {isLoading ? (
+                        <RefreshCw className="animate-spin" size={16} />
+                      ) : (
+                        <>
+                          <Wand2 size={16} />
+                          Build Prompt
+                        </>
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
               </div>

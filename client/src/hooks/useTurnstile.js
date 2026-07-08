@@ -30,7 +30,7 @@ export const useTurnstile = (onError) => {
               onError?.('Security verification failed. Please refresh the page.');
             },
             appearance: 'interaction-only',
-            theme: 'light',
+            theme: 'auto',
           });
         } catch (e) {
           console.error('Failed to render Turnstile:', e);

@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
     "./client/index.html",
     "./client/src/**/*.{js,ts,jsx,tsx}",
@@ -47,9 +48,26 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ['Poppins', 'sans-serif'],
+        sans: [
+          'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont',
+          'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif',
+        ],
         serif: ['Libre Baskerville', 'serif'],
         mono: ['IBM Plex Mono', 'monospace'],
+      },
+      keyframes: {
+        'chip-in': {
+          '0%': { opacity: '0', transform: 'translateY(4px) scale(0.98)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        'chip-out': {
+          '0%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+          '100%': { opacity: '0', transform: 'translateY(4px) scale(0.98)' },
+        },
+      },
+      animation: {
+        'chip-in': 'chip-in 200ms ease-out both',
+        'chip-out': 'chip-out 150ms ease-in both',
       },
     },
   },

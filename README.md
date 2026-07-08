@@ -1,4 +1,4 @@
-# Prompt Fixer
+# PromptFixer
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Tech Stack](https://img.shields.io/badge/stack-React_Express_Gemini-orange.svg)
@@ -17,7 +17,7 @@ Most people struggle to write effective AI prompts. The difference between "writ
 
 > **The problem:** Prompt engineering frameworks are powerful, but knowing which to use and how to apply them requires expertise most users don't have.
 
-> **The solution:** Prompt Fixer uses intelligent framework selection to automatically choose and apply the right structure for your task—no prompt engineering knowledge required.
+> **The solution:** PromptFixer uses intelligent framework selection to automatically choose and apply the right structure for your task—no prompt engineering knowledge required.
 
 ---
 
@@ -25,7 +25,7 @@ Most people struggle to write effective AI prompts. The difference between "writ
 
 ### 1. Intelligent Framework Selection
 
-Instead of asking users to choose a framework, Prompt Fixer analyzes your request and automatically selects the best approach from 6 specialized frameworks:
+Instead of asking users to choose a framework, PromptFixer analyzes your request and automatically selects the best approach from 6 specialized frameworks:
 
 | Framework | Meaning | Best For |
 | :--- | :--- | :--- |
@@ -69,7 +69,8 @@ After generation, you may receive 0-5 targeted questions to fill any gaps. If yo
 ### System Architecture
 - **Client:** React + Vite
 - **Server:** Express.js with rate limiting
-- **AI Model:** Google Gemini 2.5 Flash via OpenRouter
+- **AI Model:** Google Gemini 3.1 Flash-Lite via OpenRouter (hidden power tier: Gemini 3 Flash)
+- **Cost/latency:** thinking-level scaling (reasoning effort proportional to input complexity), implicit prompt caching of the stable system prompt, and a loose `max_price` routing guardrail
 - **Security:** Cloudflare Turnstile for abuse prevention
 
 ### Prompt Engineering Strategy

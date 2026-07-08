@@ -3,8 +3,33 @@ const router = express.Router();
 const { verifyTurnstile, turnstileRateLimiter } = require('../middleware/turnstile');
 const rateLimiter = require('../middleware/rateLimiter');
 
-const MODEL_NAME = "google/gemini-2.5-flash-lite-preview-09-2025";
-const POWER_MODEL_NAME = "google/gemini-3-flash-preview";
+// Model tiers. max_price is a per-request price-per-token CEILING ($/M tokens)
+// used purely for provider routing — a loose guardrail against surprise price
+// hikes, NOT a spend/session cap. Set to a modest margin (~2x) above list price
+// so normal requests never fail. Tune down cautiously if requests start erroring.
+const MODELS = {
+  default: {
+    name: "google/gemini-3.1-flash-lite", // GA; list ~$0.25 in / $1.50 out
+    maxPrice: { prompt: 0.5, completion: 3 },
+  },
+  power: {
+    name: "google/gemini-3-flash-preview", // hidden ?mode=power; list ~$0.50 in / $3 out
+    maxPrice: { prompt: 1, completion: 6 },
+  },
+};
+
+// Thinking-level scaling: pick a Gemini thinkingLevel (via OpenRouter's unified
+// reasoning.effort) proportional to input complexity. No extra LLM call — this
+// is a deterministic heuristic run before the single generation call. Power tier
+// gets a static high floor; the default tier scales low→medium with input size.
+const determineReasoningEffort = (messages, isPowerModel) => {
+  if (isPowerModel) return "high";
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const text = (lastUser && lastUser.content) || "";
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  // Long/refinement/multi-part inputs warrant more thinking; short prompts stay cheap+fast.
+  return wordCount > 60 ? "medium" : "low";
+};
 
 router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, async (req, res) => {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -56,7 +81,8 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
 
     // Determine model with strict boolean check for security/correctness
     const isPowerModel = sanitizedBody.usePowerModel === true;
-    const modelToUse = isPowerModel ? POWER_MODEL_NAME : MODEL_NAME;
+    const tier = isPowerModel ? MODELS.power : MODELS.default;
+    const modelToUse = tier.name;
 
     // Remove usePowerModel to avoid sending unknown parameters to the LLM API
     delete sanitizedBody.usePowerModel;
@@ -65,21 +91,27 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
       model: modelToUse,
       ...sanitizedBody
     };
+    // Internal flag — not an OpenRouter parameter.
+    delete requestBody.usePowerModel;
 
-    // To enable reasoning with the default parameters (medium effort, no exclusions)
+    // Thinking-level scaling: effort maps to Gemini's thinkingLevel via OpenRouter.
     // See: https://openrouter.ai/docs/guides/best-practices/reasoning-tokens
-    requestBody.reasoning = {
-      enabled: true
-    };
-    
-    console.log(`[Generate] Using Model: ${modelToUse}`);
+    const reasoningEffort = determineReasoningEffort(sanitizedBody.messages, isPowerModel);
+    requestBody.reasoning = { effort: reasoningEffort };
+
+    // Loose price guardrail (routing ceiling, not a spend cap). The large, stable
+    // system prompt is served via Gemini's implicit prompt caching (OpenRouter keeps
+    // it warm with sticky routing) — no explicit cache_control needed for Gemini.
+    requestBody.provider = { max_price: tier.maxPrice };
+
+    console.log(`[Generate] Model: ${modelToUse} | reasoning: ${reasoningEffort}`);
     
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": "https://promptfixer.co", 
-        "X-Title": "Prompt Fixer",
+        "X-Title": "PromptFixer",
         "Content-Type": "application/json"
       },
       body: JSON.stringify(requestBody)
