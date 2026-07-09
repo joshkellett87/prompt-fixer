@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Wand2 from 'lucide-react/dist/esm/icons/wand-2';
-import MessageSquarePlus from 'lucide-react/dist/esm/icons/message-square-plus';
+import PenLine from 'lucide-react/dist/esm/icons/pen-line';
+import Lightbulb from 'lucide-react/dist/esm/icons/lightbulb';
 import Copy from 'lucide-react/dist/esm/icons/copy';
 import Check from 'lucide-react/dist/esm/icons/check';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
-import Sparkles from 'lucide-react/dist/esm/icons/sparkles';
+import FileText from 'lucide-react/dist/esm/icons/file-text';
+import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
+import ArrowDown from 'lucide-react/dist/esm/icons/arrow-down';
 import Trash2 from 'lucide-react/dist/esm/icons/trash-2';
 import History from 'lucide-react/dist/esm/icons/history';
 import Send from 'lucide-react/dist/esm/icons/send';
@@ -17,6 +19,7 @@ import Moon from 'lucide-react/dist/esm/icons/moon';
 import { callApiWithBackoff, fetchOptimizedPrompt } from './api';
 import { useTurnstile } from './hooks/useTurnstile';
 import { getSystemInstruction } from './prompts/systemInstructions';
+import { frameworks } from './prompts/frameworks';
 import { cn } from './lib/utils';
 import { Button } from './components/ui/button';
 import { Textarea } from './components/ui/textarea';
@@ -58,6 +61,7 @@ const App = () => {
   const [usedFramework, setUsedFramework] = useState(null);
   const [inputFocused, setInputFocused] = useState(false);
   const textareaRef = useRef(null);
+  const outputRef = useRef(null);
 
   // Theme: initialized from the class set by the anti-FOUC script in index.html.
   const [theme, setTheme] = useState(() =>
@@ -92,6 +96,18 @@ const App = () => {
     }
   }, [history]);
 
+  // On stacked (mobile/tablet) layouts the result renders below the fold, so a
+  // fresh prompt can land unseen. Bring it into view — and move focus there for
+  // screen readers — whenever a result arrives on small screens. Desktop shows
+  // the result beside the input, so it's left untouched (no focus-stealing).
+  useEffect(() => {
+    if (!optimizedPrompt || !outputRef.current) return;
+    if (!window.matchMedia('(max-width: 1023px)').matches) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    outputRef.current.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    outputRef.current.focus();
+  }, [optimizedPrompt]);
+
   // Check for Power Mode
   const [usePowerModel, setUsePowerModel] = useState(false);
   useEffect(() => {
@@ -103,7 +119,14 @@ const App = () => {
   }, []);
 
   // Turnstile Integration
-  const {  resetTurnstile } = useTurnstile(setError);
+  const { turnstileReady, resetTurnstile } = useTurnstile(setError);
+
+  // Turnstile only gates in production (dev has no site key / widget, and
+  // generatePrompt already skips the token check outside PROD). Gating on the
+  // reactive `turnstileReady` — not the non-reactive `window.turnstileToken`
+  // global — is what lets the button re-enable itself the moment the check clears.
+  const needsVerification = import.meta.env.PROD && !turnstileReady;
+  const canBuild = userInput.trim() && !isLoading && !needsVerification;
 
   // Primary Logic: Generation
   const generatePrompt = async (input, answers = "") => {
@@ -206,6 +229,19 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans p-4 md:p-8">
+      {/* Screen-reader-only live regions: narrate the core loop for assistive
+          tech, which otherwise gets no signal that anything happened. */}
+      <div aria-live="polite" className="sr-only">
+        {isLoading
+          ? 'Optimizing your prompt.'
+          : optimizedPrompt
+            ? 'Your optimized prompt is ready.'
+            : ''}
+      </div>
+      <div aria-live="polite" className="sr-only">
+        {copied ? 'Prompt copied to clipboard.' : ''}
+      </div>
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="flex items-start justify-between gap-4 mb-10 md:mb-12">
@@ -244,11 +280,11 @@ const App = () => {
           <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="order-1">
               <div className="lg:sticky lg:top-8">
-                <Card className="shadow-md border-border">
+                <Card className="shadow-sm border-border">
                   <CardHeader>
                     <CardTitle className="text-lg font-serif font-medium flex items-center gap-2.5">
                       <div className="p-1.5 bg-primary/10 rounded-md">
-                        <MessageSquarePlus className="w-4 h-4 text-primary" />
+                        <Lightbulb className="w-4 h-4 text-primary" />
                       </div>
                       Your Idea
                     </CardTitle>
@@ -266,7 +302,7 @@ const App = () => {
                         onKeyDown={(e) => {
                           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                             e.preventDefault();
-                            if (userInput.trim() && window.turnstileToken && !isLoading) {
+                            if (canBuild) {
                               generatePrompt(userInput);
                             }
                           }
@@ -309,19 +345,41 @@ const App = () => {
 
                     <Button
                       onClick={() => generatePrompt(userInput)}
-                      disabled={!userInput.trim() || isLoading || !window.turnstileToken}
+                      disabled={!canBuild}
                       size="lg"
                       className="w-full font-semibold"
                     >
                       {isLoading ? (
-                        <RefreshCw className="animate-spin" size={16} />
+                        <>
+                          <RefreshCw className="animate-spin" size={16} />
+                          Building…
+                        </>
                       ) : (
                         <>
-                          <Wand2 size={16} />
+                          <PenLine size={16} />
                           Build Prompt
                         </>
                       )}
                     </Button>
+
+                    {/* Never leave the disabled button as a silent dead end:
+                        say why it's disabled, or surface the keyboard shortcut. */}
+                    {!isLoading && (
+                      needsVerification && userInput.trim() ? (
+                        <p role="status" className="text-xs text-muted-foreground text-center">
+                          Running a quick security check — the button enables in a second.
+                        </p>
+                      ) : userInput.trim() ? (
+                        <p className="hidden sm:block text-xs text-muted-foreground text-center">
+                          Or press{' '}
+                          <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted/50 font-mono text-[10px]">⌘</kbd>
+                          <span className="mx-0.5">/</span>
+                          <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted/50 font-mono text-[10px]">Ctrl</kbd>
+                          {' + '}
+                          <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted/50 font-mono text-[10px]">Enter</kbd>
+                        </p>
+                      ) : null
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -345,7 +403,7 @@ const App = () => {
                 <div className="space-y-2">
                   {history.map((historyItem, i) => (
                     <button
-                      key={i}
+                      key={historyItem.timestamp ?? i}
                       onClick={() => {
                         setUserInput(historyItem.input);
                         setOptimizedPrompt(historyItem.optimizedPrompt);
@@ -364,26 +422,33 @@ const App = () => {
           </div>
 
           {/* Output Side */}
-          <div className="lg:col-span-7 order-2">
-            <Card className="shadow-lg border-2 border-primary/10 min-h-[550px] flex flex-col">
+          <div ref={outputRef} tabIndex={-1} className="lg:col-span-7 order-2 scroll-mt-4 focus:outline-none">
+            <Card className="shadow-sm border-border min-h-[440px] flex flex-col">
               <CardHeader className="border-b border-border shrink-0">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <CardTitle className="flex items-center gap-2.5 text-lg font-serif font-medium">
-                    <div className="p-1.5 bg-accent/50 rounded-md">
-                      <Sparkles className="w-4 h-4 text-accent-foreground" />
+                    <div className="p-1.5 bg-primary/10 rounded-md">
+                      <FileText className="w-4 h-4 text-primary" />
                     </div>
                     Optimized Prompt
                   </CardTitle>
 
                   {optimizedPrompt && (
-                    <Button
-                      onClick={handleCopy}
-                      size="sm"
-                      className={copied ? 'bg-green-600 hover:bg-green-700' : ''}
-                    >
-                      {copied ? <Check size={14} /> : <Copy size={14} />}
-                      {copied ? 'Copied' : 'Copy'}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => generatePrompt(userInput)}
+                        disabled={!canBuild}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <RefreshCw size={14} />
+                        Regenerate
+                      </Button>
+                      <Button onClick={handleCopy} size="sm">
+                        {copied ? <Check size={14} /> : <Copy size={14} />}
+                        {copied ? 'Copied' : 'Copy'}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>
@@ -391,11 +456,11 @@ const App = () => {
               <CardContent className="flex-grow overflow-y-auto max-h-[600px] p-8">
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center h-full py-20 space-y-4">
-                    <div className="relative">
-                       <div className="w-10 h-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
-                       <Wand2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+                    <div className="w-10 h-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
+                    <div className="text-center space-y-1">
+                      <p className="font-semibold text-sm text-foreground">Optimizing...</p>
+                      <p className="text-xs text-muted-foreground">This usually takes a few seconds.</p>
                     </div>
-                    <p className="font-semibold text-sm text-foreground">Optimizing...</p>
                   </div>
                 ) : optimizedPrompt ? (
                   <div>
@@ -403,25 +468,68 @@ const App = () => {
                       {optimizedPrompt}
                     </div>
                     {usedFramework && (
-                      <p className="text-xs text-muted-foreground mt-3 pl-1">
-                        Optimized using {usedFramework} framework
-                      </p>
+                      <div className="mt-3 pl-1 space-y-0.5">
+                        <p className="text-xs text-muted-foreground">
+                          Optimized using {usedFramework}
+                          {frameworks[usedFramework]?.useCase
+                            ? ` — best for ${frameworks[usedFramework].useCase.toLowerCase()}`
+                            : ''}
+                        </p>
+                        {frameworks[usedFramework]?.label && (
+                          <p className="text-[11px] text-muted-foreground">
+                            {frameworks[usedFramework].label}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-4 p-6">
-                    <div className="space-y-3">
-                      <div className="h-3 bg-muted/50 rounded animate-pulse w-full"></div>
-                      <div className="h-3 bg-muted/50 rounded animate-pulse w-5/6"></div>
-                      <div className="h-3 bg-muted/50 rounded animate-pulse w-4/6"></div>
-                      <div className="h-3 bg-muted/50 rounded animate-pulse w-full"></div>
-                      <div className="h-3 bg-muted/50 rounded animate-pulse w-3/4"></div>
-                    </div>
-                    <div className="mt-8 text-center">
-                      <Sparkles className="w-12 h-12 text-primary/20 mx-auto mb-3" />
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Your optimized prompt will appear here
-                      </p>
+                  /* Teaching empty state: show a real rough-idea → structured-prompt
+                     transformation so the value lands before the user types anything.
+                     (Replaces the old fake skeleton, which implied loading when idle.) */
+                  <div className="h-full flex flex-col items-center justify-center text-center px-2 py-8">
+                    <h3 className="text-lg font-serif font-medium text-foreground mb-2">
+                      Your optimized prompt will appear here
+                    </h3>
+                    <p className="text-sm text-muted-foreground max-w-sm mb-8 leading-relaxed">
+                      Describe a rough idea on the left and PromptFixer structures it into a
+                      clear, high-performance prompt. Here's the kind of transformation you'll get:
+                    </p>
+
+                    <div className="w-full max-w-md text-left space-y-3">
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                          You type
+                        </p>
+                        <p className="text-sm text-foreground bg-muted/40 border border-border rounded-lg px-3 py-2 italic">
+                          &ldquo;write a blog post about coffee&rdquo;
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground pl-1">
+                        <ArrowDown className="w-3.5 h-3.5 shrink-0" />
+                        <span className="text-xs">PromptFixer structures it</span>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                          You get
+                        </p>
+                        <div className="whitespace-pre-wrap text-foreground text-xs font-mono leading-relaxed bg-muted/30 p-3 rounded-lg border border-border">
+{`Role: You are an experienced coffee writer and
+home-brewing enthusiast.
+
+Task: Write an engaging, beginner-friendly blog post
+about making great coffee at home.
+
+Audience: Readers new to brewing who own only basic
+equipment (kettle, grinder, a simple dripper).
+
+Format: ~600 words — a short hook, three clearly
+headed sections, and a closing list of 3 quick tips.
+
+Tone: Warm and practical; explain any jargon in
+plain English.`}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -449,17 +557,17 @@ const App = () => {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-4">
                     {refinementQuestions.map((q, i) => (
-                      <div key={i} className="bg-card border border-border p-3 rounded-lg shadow-sm hover:border-primary/30 transition-all">
-                        <div className="flex items-start gap-2 mb-2">
-                          <div className="w-4 h-4 rounded-full bg-accent/50 flex items-center justify-center shrink-0 mt-0.5">
-                            <ArrowRight size={8} className="text-accent-foreground" />
+                      <div key={i} className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                            <ArrowRight size={8} className="text-primary" />
                           </div>
                           <p className="text-xs font-medium text-foreground leading-relaxed">{q}</p>
                         </div>
                         <Textarea
-                          className="text-xs bg-muted/50 border-border min-h-[60px]"
+                          className="text-xs bg-card border-border min-h-[60px]"
                           placeholder="Your answer..."
                           rows={2}
                           value={pendingAnswers[i] || ''}
@@ -504,9 +612,12 @@ const App = () => {
 
       {/* Error Toast */}
       {error && (
-        <div className="fixed bottom-6 right-6 max-w-sm bg-card border-l-4 border-destructive shadow-xl p-4 rounded-lg flex items-start gap-3 z-50">
+        <div
+          role="alert"
+          className="fixed bottom-6 right-6 max-w-sm bg-card border border-destructive/40 shadow-xl p-4 rounded-lg flex items-start gap-3 z-50"
+        >
           <div className="shrink-0 w-5 h-5 rounded-full bg-destructive/10 flex items-center justify-center">
-            <Sparkles className="text-destructive w-3 h-3" />
+            <AlertTriangle className="text-destructive w-3 h-3" />
           </div>
           <div className="flex-grow">
             <p className="font-semibold text-foreground text-xs mb-1">Error</p>

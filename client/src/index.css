@@ -118,3 +118,21 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* Respect reduced-motion: strip decorative animation/transitions to instant.
+   The loading spinner keeps a gentle spin — it's functional feedback, not
+   decoration, and it's paired with a text/live-region status either way. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-spin {
+    animation-duration: 1.2s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
