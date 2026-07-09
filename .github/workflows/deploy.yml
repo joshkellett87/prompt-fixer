@@ -36,14 +36,29 @@ jobs:
             # Fix "dubious ownership" error
             git config --global --add safe.directory /var/www/prompt-builder
 
-            # Clone if empty, otherwise fetch
+            # Guarantee the deploy token is never left in .git/config, even if a
+            # git command below fails and `set -e` aborts the script. The EXIT
+            # trap resets the remote to a token-less URL no matter how we exit.
+            # DEPLOY_TOKEN should be a read-only, repo-scoped fine-grained PAT.
+            scrub_git_token() {
+              if [ -d ".git" ]; then
+                git remote set-url origin https://github.com/${{ github.repository }} || true
+              fi
+            }
+            trap scrub_git_token EXIT
+
+            # Clone if empty, otherwise fetch. The token is only needed for the
+            # git transport; we also scrub it inline on the success path so it is
+            # not present in .git/config during the build/PM2 steps.
             if [ ! -d ".git" ]; then
               git clone https://${DEPLOY_TOKEN}@github.com/${{ github.repository }} .
+              git remote set-url origin https://github.com/${{ github.repository }}
             else
-              # Update remote URL with token for authentication
+              # Temporarily add the token for authentication, then scrub it.
               git remote set-url origin https://${DEPLOY_TOKEN}@github.com/${{ github.repository }}
               git fetch origin main
               git reset --hard origin/main
+              git remote set-url origin https://github.com/${{ github.repository }}
             fi
 
 
