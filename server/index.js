@@ -8,6 +8,11 @@ const apiRoutes = require('./routes/api');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust the loopback proxy (nginx runs on the same host and forwards
+// X-Forwarded-For / X-Real-IP). Without this, express-rate-limit keys every
+// request to the nginx socket address, making per-IP limits effectively global.
+app.set('trust proxy', 'loopback');
+
 // Security Headers Middleware
 app.use((req, res, next) => {
   // Content Security Policy

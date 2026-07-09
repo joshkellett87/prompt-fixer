@@ -24,6 +24,10 @@ const verifyTurnstile = async (req, res, next) => {
     return res.status(400).json({ error: 'Turnstile token missing' });
   }
 
+  // Abort the verification call if Cloudflare hangs, so requests fail fast.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
   try {
     const formData = new URLSearchParams();
     formData.append('secret', secretKey);
@@ -32,6 +36,7 @@ const verifyTurnstile = async (req, res, next) => {
     const result = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       body: formData,
+      signal: controller.signal,
     });
 
     const data = await result.json();
@@ -39,12 +44,18 @@ const verifyTurnstile = async (req, res, next) => {
     if (data.success) {
       next();
     } else {
-      console.warn('Turnstile validation failed:', data);
+      console.warn('Turnstile validation failed:', data['error-codes']);
       res.status(403).json({ error: 'CAPTCHA validation failed', details: data['error-codes'] });
     }
   } catch (error) {
-    console.error('Turnstile verification error:', error);
+    if (error.name === 'AbortError') {
+      console.error('Turnstile verification timeout after 10s');
+      return res.status(504).json({ error: 'CAPTCHA verification timed out' });
+    }
+    console.error('Turnstile verification error:', error.message);
     res.status(502).json({ error: 'Failed to connect to CAPTCHA verification service' });
+  } finally {
+    clearTimeout(timeout);
   }
 };
 

@@ -138,7 +138,7 @@ describe('API Input Validation', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toContain('max_tokens must be between 1 and 100000');
+      expect(response.body.error).toContain('max_tokens must be between 1 and 10000');
     });
 
     test('should reject max_tokens outside valid range (too high)', async () => {
@@ -147,11 +147,28 @@ describe('API Input Validation', () => {
         .send({
           turnstileToken: 'test-token',
           messages: [{ role: 'user', content: 'test' }],
-          max_tokens: 100001
+          max_tokens: 10001
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toContain('max_tokens must be between 1 and 100000');
+      expect(response.body.error).toContain('max_tokens must be between 1 and 10000');
+    });
+
+    test('should accept max_tokens at the upper cap', async () => {
+      fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'response' } }] })
+      });
+
+      const response = await request(app)
+        .post('/api/generate')
+        .send({
+          turnstileToken: 'test-token',
+          messages: [{ role: 'user', content: 'test' }],
+          max_tokens: 10000
+        });
+
+      expect(response.status).toBe(200);
     });
 
     test('should filter out non-allowed fields', async () => {

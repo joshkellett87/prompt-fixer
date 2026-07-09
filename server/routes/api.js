@@ -75,11 +75,14 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
     if (sanitizedBody.temperature !== undefined && (sanitizedBody.temperature < 0 || sanitizedBody.temperature > 2)) {
       return res.status(400).json({ error: 'Invalid request: temperature must be between 0 and 2' });
     }
-    if (sanitizedBody.max_tokens !== undefined && (sanitizedBody.max_tokens < 1 || sanitizedBody.max_tokens > 100000)) {
-      return res.status(400).json({ error: 'Invalid request: max_tokens must be between 1 and 100000' });
+    if (sanitizedBody.max_tokens !== undefined && (sanitizedBody.max_tokens < 1 || sanitizedBody.max_tokens > 10000)) {
+      return res.status(400).json({ error: 'Invalid request: max_tokens must be between 1 and 10000' });
     }
 
-    // Determine model with strict boolean check for security/correctness
+    // Determine model with strict boolean check for security/correctness.
+    // usePowerModel is intentionally public input (hidden ?mode=power feature):
+    // the power tier is only ~2x list price and requests are rate-limited, so
+    // allowing direct callers to opt in is an accepted cost risk.
     const isPowerModel = sanitizedBody.usePowerModel === true;
     const tier = isPowerModel ? MODELS.power : MODELS.default;
     const modelToUse = tier.name;
@@ -105,22 +108,43 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
     requestBody.provider = { max_price: tier.maxPrice };
 
     console.log(`[Generate] Model: ${modelToUse} | reasoning: ${reasoningEffort}`);
-    
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://promptfixer.co", 
-        "X-Title": "PromptFixer",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(requestBody)
-    });
 
-    const data = await response.json();
+    // Abort the upstream call if OpenRouter hangs, so requests fail fast instead
+    // of tying up the connection until the platform/network eventually times out.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    let response;
+    let data;
+    try {
+      response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://promptfixer.co",
+          "X-Title": "PromptFixer",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      // Read the body while the abort timer is still active, so a response that
+      // sends headers quickly but then stalls mid-body is still cut off.
+      data = await response.json();
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
-        console.error('OpenRouter API Error:', response.status, JSON.stringify(data));
+        // Log status and provider error code/message only — never the full
+        // upstream body, which can contain internal_details.
+        const providerError = data && data.error;
+        console.error(
+          'OpenRouter API Error:',
+          response.status,
+          (providerError && (providerError.code || providerError.type)) || 'unknown_code',
+          (providerError && providerError.message) || ''
+        );
         return res.status(response.status === 500 ? 502 : response.status).json({
           error: 'Failed to process request with AI service'
         });
@@ -129,7 +153,11 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
     res.json(data);
 
   } catch (error) {
-    console.error('OpenRouter API connection error:', error);
+    if (error.name === 'AbortError') {
+      console.error('OpenRouter API timeout after 30s');
+      return res.status(504).json({ error: 'AI service timed out' });
+    }
+    console.error('OpenRouter API connection error:', error.message);
     res.status(502).json({ error: 'Failed to communicate with AI service' });
   }
 });
