@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 export const useTurnstile = (onError) => {
   const widgetIdRef = useRef(null);
+  const retriesRef = useRef(0);
   const [turnstileReady, setTurnstileReady] = useState(false);
 
   useEffect(() => {
@@ -23,10 +24,19 @@ export const useTurnstile = (onError) => {
             sitekey: siteKey,
             callback: (token) => {
               window.turnstileToken = token;
+              retriesRef.current = 0;
               setTurnstileReady(true);
             },
             'error-callback': (errorCode) => {
               console.error('Turnstile error:', errorCode);
+              // ponytail: retry twice before surfacing the error — the widget is
+              // invisible (interaction-only), so a transient failure would otherwise
+              // dead-end the user with no way to recover but a manual refresh.
+              if (retriesRef.current < 2 && window.turnstile && widgetIdRef.current) {
+                retriesRef.current += 1;
+                window.turnstile.reset(widgetIdRef.current);
+                return;
+              }
               onError?.('Security verification failed. Please refresh the page.');
             },
             appearance: 'interaction-only',
@@ -44,7 +54,6 @@ export const useTurnstile = (onError) => {
       
       if (!existingScript) {
         script = document.createElement('script');
-        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
         script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
         script.onload = renderWidget;
         document.head.appendChild(script);
