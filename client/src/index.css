@@ -61,9 +61,11 @@
 
 @layer base {
   :root {
-    --background: 30 15% 97%; /* #faf7f5 */
+    /* Desk vs. paper: the page is a shade deeper than the sheets sitting on it,
+       so cards read as physical surfaces instead of invisible outlines. */
+    --background: 30 20% 94%; /* #f2ece6 */
     --foreground: 0 0% 10%; /* #1a1a1a */
-    --card: 30 15% 97%; /* #faf7f5 */
+    --card: 32 40% 98%; /* #fdfaf6 */
     --card-foreground: 0 0% 10%; /* #1a1a1a */
     --popover: 30 15% 97%; /* #faf7f5 */
     --popover-foreground: 0 0% 10%; /* #1a1a1a */
@@ -71,7 +73,9 @@
     --primary-foreground: 0 0% 100%; /* #ffffff */
     --secondary: 45 87% 92%; /* #fdf2d6 */
     --secondary-foreground: 36 100% 25%; /* #805500 */
-    --muted: 30 23% 94%; /* #f0ebe8 */
+    /* A perceptible step below --background (~15 values, not 2-3), so panels
+       using it actually read as recessed rather than dissolving into the page. */
+    --muted: 30 22% 88%; /* #e7ddd2 */
     --muted-foreground: 24 10% 34%; /* #57534e */
     --accent: 48 96% 91%; /* #fef3c7 */
     --accent-foreground: 0 73% 30%; /* #7f1d1d */
@@ -81,6 +85,9 @@
     --input: 39 60% 90%; /* #f5e8d2 */
     --ring: 0 63% 38%; /* #9b2c2c */
     --radius: 0.5rem;
+    /* Shadows carry the warm hue of the paper rather than neutral black. */
+    --shadow-tint: 24 30% 22%;
+    --grain-opacity: 0.035;
   }
 
   .dark {
@@ -94,7 +101,7 @@
     --primary-foreground: 30 15% 97%; /* #faf7f5 */
     --secondary: 30 100% 29%; /* #92400e */
     --secondary-foreground: 48 96% 91%; /* #fef3c7 */
-    --muted: 24 13% 11%; /* #1f1c1a */
+    --muted: 24 14% 8%; /* #171412 */
     --muted-foreground: 30 6% 83%; /* #d6d3d1 */
     --accent: 33 100% 37%; /* #b45309 */
     --accent-foreground: 48 96% 91%; /* #fef3c7 */
@@ -103,6 +110,8 @@
     --border: 20 6% 27%; /* #44403c */
     --input: 20 6% 27%; /* #44403c */
     --ring: 0 72% 41%; /* #b91c1c */
+    --shadow-tint: 24 40% 3%;
+    --grain-opacity: 0.05;
   }
 }
 
@@ -110,12 +119,37 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Paper grain. A single fixed, non-interactive layer of fractal noise keeps
+     the flat surfaces from reading as sterile vector fills. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)'/%3E%3C/svg%3E");
+  }
+
+  /* Display type should never leave a single orphaned word on its last line. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
 }
 

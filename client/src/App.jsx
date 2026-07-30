@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PenLine from 'lucide-react/dist/esm/icons/pen-line';
-import Lightbulb from 'lucide-react/dist/esm/icons/lightbulb';
 import Copy from 'lucide-react/dist/esm/icons/copy';
 import Check from 'lucide-react/dist/esm/icons/check';
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw';
 import ChevronRight from 'lucide-react/dist/esm/icons/chevron-right';
-import FileText from 'lucide-react/dist/esm/icons/file-text';
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle';
 import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right';
 import ArrowDown from 'lucide-react/dist/esm/icons/arrow-down';
@@ -14,8 +12,6 @@ import History from 'lucide-react/dist/esm/icons/history';
 import Send from 'lucide-react/dist/esm/icons/send';
 import Github from 'lucide-react/dist/esm/icons/github';
 import Linkedin from 'lucide-react/dist/esm/icons/linkedin';
-import Sun from 'lucide-react/dist/esm/icons/sun';
-import Moon from 'lucide-react/dist/esm/icons/moon';
 import { callApiWithBackoff, fetchOptimizedPrompt } from './api';
 import { useTurnstile } from './hooks/useTurnstile';
 import { getSystemInstruction } from './prompts/systemInstructions';
@@ -228,7 +224,7 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans p-4 md:p-8">
+    <div className="min-h-dvh bg-background text-foreground font-sans p-4 md:p-8">
       {/* Screen-reader-only live regions: narrate the core loop for assistive
           tech, which otherwise gets no signal that anything happened. */}
       <div aria-live="polite" className="sr-only">
@@ -251,10 +247,10 @@ const App = () => {
               alt="PromptFixer logo"
               width={44}
               height={44}
-              className="w-11 h-11 rounded-lg shadow-sm border border-border bg-white object-contain p-1 shrink-0"
+              className="w-11 h-11 rounded-md shadow-sm border border-border bg-white object-contain p-1 shrink-0"
             />
             <div>
-              <h1 className="text-3xl font-serif font-medium text-foreground leading-tight">
+              <h1 className="text-3xl font-serif font-medium text-foreground leading-[1.15] tracking-[-0.02em]">
                 PromptFixer
               </h1>
               {/* Micro-hero: slim value-prop so novices instantly get what it does */}
@@ -264,14 +260,15 @@ const App = () => {
             </div>
           </div>
 
+          {/* A labelled text switch, not the default sun/moon icon toggle — it
+              names the mode you'll get, so there's nothing to decode. */}
           <button
             type="button"
             onClick={toggleTheme}
-            className="shrink-0 p-2 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors cursor-pointer"
+            className="shrink-0 font-mono text-xs text-muted-foreground hover:text-foreground border-b border-dotted border-muted-foreground/40 hover:border-primary/60 pb-0.5 transition-colors cursor-pointer"
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {theme === 'dark' ? 'light mode' : 'dark mode'}
           </button>
         </header>
 
@@ -280,20 +277,27 @@ const App = () => {
           <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="order-1">
               <div className="lg:sticky lg:top-8">
-                <Card className="shadow-sm border-border">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-serif font-medium flex items-center gap-2.5">
-                      <div className="p-1.5 bg-primary/10 rounded-md">
-                        <Lightbulb className="w-4 h-4 text-primary" />
-                      </div>
-                      Your Idea
-                    </CardTitle>
+                {/* The input is a recessed working surface — a tray, not a card.
+                    Full-opacity fill (a 40% wash left it indistinguishable from
+                    the page) plus an inset shadow; the lift is reserved for the
+                    output sheet so the two panels never read as identical boxes. */}
+                {/* `!shadow-inner`: tailwind-merge doesn't treat shadow-inner as
+                    conflicting with the Card base's shadow-sm, so both survive and
+                    source order picks the wrong one. The important flag settles it. */}
+                <Card className="bg-muted border-border/80 !shadow-inner rounded-panel">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-baseline gap-3">
+                      <span className="font-mono text-xs text-primary tracking-tight shrink-0">01</span>
+                      <CardTitle className="text-lg font-serif font-medium tracking-[-0.01em]">
+                        Your idea
+                      </CardTitle>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="relative">
                       <Textarea
                         ref={textareaRef}
-                        className="min-h-[260px] max-h-[500px] resize-y bg-muted/50 border-border focus-visible:ring-primary text-sm leading-relaxed"
+                        className="min-h-[260px] max-h-[500px] resize-y bg-card border-border focus-visible:ring-primary text-sm leading-relaxed rounded-lg shadow-sm"
                         placeholder="Describe what you want the AI to do — the rougher the better. PromptFixer rewrites it into a clear, structured prompt that gets better results."
                         value={userInput}
                         onChange={(e) => setUserInput(e.target.value)}
@@ -328,7 +332,9 @@ const App = () => {
                               type="button"
                               tabIndex={inputFocused ? -1 : 0}
                               onClick={() => applyExample(chip)}
-                              className="text-xs text-muted-foreground bg-card hover:bg-accent hover:text-accent-foreground border border-border rounded-full px-3 py-1.5 transition-colors cursor-pointer shadow-sm"
+                              // ponytail: sans, not mono — mono is ~15% wider and
+                              // pushed these chips onto three stacked rows.
+                              className="text-xs text-muted-foreground bg-muted hover:bg-accent hover:text-accent-foreground border border-border rounded-full px-3 py-1.5 transition-colors cursor-pointer shadow-sm"
                             >
                               {chip}
                             </button>
@@ -372,11 +378,11 @@ const App = () => {
                       ) : userInput.trim() ? (
                         <p className="hidden sm:block text-xs text-muted-foreground text-center">
                           Or press{' '}
-                          <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted/50 font-mono text-[10px]">⌘</kbd>
+                          <kbd className="px-1.5 py-0.5 rounded-sm border border-border bg-card font-mono text-xs">⌘</kbd>
                           <span className="mx-0.5">/</span>
-                          <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted/50 font-mono text-[10px]">Ctrl</kbd>
+                          <kbd className="px-1.5 py-0.5 rounded-sm border border-border bg-card font-mono text-xs">Ctrl</kbd>
                           {' + '}
-                          <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted/50 font-mono text-[10px]">Enter</kbd>
+                          <kbd className="px-1.5 py-0.5 rounded-sm border border-border bg-card font-mono text-xs">Enter</kbd>
                         </p>
                       ) : null
                     )}
@@ -389,9 +395,9 @@ const App = () => {
             {history.length > 0 && (
               <div className="order-3 lg:order-2 px-2">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <h3 className="font-mono text-xs text-muted-foreground flex items-center gap-1.5">
                     <History size={12} />
-                    History
+                    recent
                   </h3>
                   <button
                     onClick={() => setHistory([])}
@@ -423,15 +429,17 @@ const App = () => {
 
           {/* Output Side */}
           <div ref={outputRef} tabIndex={-1} className="lg:col-span-7 order-2 scroll-mt-4 focus:outline-none">
-            <Card className="shadow-sm border-border min-h-[440px] flex flex-col">
+            {/* The output is the sheet of paper: lifted off the desk with a
+                warm-tinted shadow, so hierarchy comes from depth, not borders. */}
+            <Card className="shadow-sheet border-border/60 rounded-panel min-h-[440px] flex flex-col">
               <CardHeader className="border-b border-border shrink-0">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <CardTitle className="flex items-center gap-2.5 text-lg font-serif font-medium">
-                    <div className="p-1.5 bg-primary/10 rounded-md">
-                      <FileText className="w-4 h-4 text-primary" />
-                    </div>
-                    Optimized Prompt
-                  </CardTitle>
+                  <div className="flex items-baseline gap-3">
+                    <span className="font-mono text-xs text-primary tracking-tight shrink-0">02</span>
+                    <CardTitle className="text-lg font-serif font-medium tracking-[-0.01em]">
+                      Optimized prompt
+                    </CardTitle>
+                  </div>
 
                   {optimizedPrompt && (
                     <div className="flex items-center gap-2">
@@ -453,14 +461,33 @@ const App = () => {
                 </div>
               </CardHeader>
 
-              <CardContent className="flex-grow overflow-y-auto max-h-[600px] p-8">
+              {/* The height cap only exists to stop a long generated prompt from
+                  running the page on forever — so it applies only when there IS
+                  output. The idle/empty state is a fixed, known height and gets to
+                  size itself, rather than sitting in a nested scrollbar. */}
+              <CardContent
+                className={cn(
+                  'flex-grow p-6 sm:p-8',
+                  (optimizedPrompt || isLoading) &&
+                    'overflow-y-auto max-h-[calc(100dvh-14rem)] min-h-[22rem]'
+                )}
+              >
                 {isLoading ? (
-                  <div className="flex flex-col items-center justify-center h-full py-20 space-y-4">
-                    <div className="w-10 h-10 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
-                    <div className="text-center space-y-1">
-                      <p className="font-semibold text-sm text-foreground">Optimizing...</p>
-                      <p className="text-xs text-muted-foreground">This usually takes a few seconds.</p>
+                  /* Skeleton shaped like the mono prompt block it's replacing —
+                     the layout doesn't jump when the real text lands. */
+                  <div className="space-y-6">
+                    <div className="bg-muted/30 p-6 rounded-lg border border-border space-y-3">
+                      {['85%', '70%', '92%', '48%', '78%', '88%', '60%'].map((w, i) => (
+                        <div
+                          key={i}
+                          className="h-3 rounded-sm bg-foreground/10 animate-pulse"
+                          style={{ width: w, animationDelay: `${i * 90}ms` }}
+                        />
+                      ))}
                     </div>
+                    <p className="font-mono text-xs text-muted-foreground">
+                      Structuring your prompt — a few seconds.
+                    </p>
                   </div>
                 ) : optimizedPrompt ? (
                   <div>
@@ -476,7 +503,7 @@ const App = () => {
                             : ''}
                         </p>
                         {frameworks[usedFramework]?.label && (
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             {frameworks[usedFramework].label}
                           </p>
                         )}
@@ -486,20 +513,22 @@ const App = () => {
                 ) : (
                   /* Teaching empty state: show a real rough-idea → structured-prompt
                      transformation so the value lands before the user types anything.
-                     (Replaces the old fake skeleton, which implied loading when idle.) */
-                  <div className="h-full flex flex-col items-center justify-center text-center px-2 py-8">
+                     (Replaces the old fake skeleton, which implied loading when idle.)
+                     No vertical padding of its own — CardContent already pads, and
+                     doubling it was part of what forced the panel to scroll. */
+                  <div className="h-full flex flex-col items-center justify-center text-center px-2">
                     <h3 className="text-lg font-serif font-medium text-foreground mb-2">
                       Your optimized prompt will appear here
                     </h3>
-                    <p className="text-sm text-muted-foreground max-w-sm mb-8 leading-relaxed">
+                    <p className="text-sm text-muted-foreground max-w-sm mb-6 leading-relaxed">
                       Describe a rough idea on the left and PromptFixer structures it into a
                       clear, high-performance prompt. Here's the kind of transformation you'll get:
                     </p>
 
                     <div className="w-full max-w-md text-left space-y-3">
                       <div>
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                          You type
+                        <p className="font-mono text-xs text-muted-foreground mb-1.5">
+                          you type
                         </p>
                         <p className="text-sm text-foreground bg-muted/40 border border-border rounded-lg px-3 py-2 italic">
                           &ldquo;write a blog post about coffee&rdquo;
@@ -510,8 +539,8 @@ const App = () => {
                         <span className="text-xs">PromptFixer structures it</span>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                          You get
+                        <p className="font-mono text-xs text-muted-foreground mb-1.5">
+                          you get
                         </p>
                         <div className="whitespace-pre-wrap text-foreground text-xs font-mono leading-relaxed bg-muted/30 p-3 rounded-lg border border-border">
 {`Role: You are an experienced coffee writer and
@@ -539,10 +568,10 @@ plain English.`}
               {refinementQuestions.length > 0 && !isLoading && (
                 <div className="p-6 bg-muted/30 border-t border-border shrink-0">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1 h-4 bg-primary rounded-full"></div>
-                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Refinement Questions
+                    <div className="flex items-baseline gap-3">
+                      <span className="font-mono text-xs text-primary tracking-tight shrink-0">03</span>
+                      <h3 className="font-serif text-base font-medium text-foreground tracking-[-0.01em]">
+                        Sharpen it further
                       </h3>
                     </div>
                     {Object.values(pendingAnswers).some(a => a.trim() !== "") && (
@@ -614,13 +643,11 @@ plain English.`}
       {error && (
         <div
           role="alert"
-          className="fixed bottom-6 right-6 max-w-sm bg-card border border-destructive/40 shadow-xl p-4 rounded-lg flex items-start gap-3 z-50"
+          className="fixed bottom-6 right-6 max-w-sm bg-card border-l-2 border-l-destructive border-y border-r border-border shadow-xl p-4 rounded-r-lg flex items-start gap-3 z-50"
         >
-          <div className="shrink-0 w-5 h-5 rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertTriangle className="text-destructive w-3 h-3" />
-          </div>
+          <AlertTriangle className="text-destructive w-4 h-4 shrink-0 mt-px" />
           <div className="flex-grow">
-            <p className="font-semibold text-foreground text-xs mb-1">Error</p>
+            <p className="font-mono text-xs text-destructive mb-1">that didn&rsquo;t work</p>
             <p className="text-muted-foreground text-xs leading-relaxed">{error}</p>
           </div>
         </div>
