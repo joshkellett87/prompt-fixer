@@ -7,6 +7,13 @@ module.exports = {
   ],
   theme: {
     extend: {
+      // Screen size doesn't tell you the input method: a 1280px laptop can have a
+      // touchscreen and a 1024px tablet can have a trackpad. `touch:` targets the
+      // pointer instead, so finger-sized hit areas land on the devices that need
+      // them without inflating the same controls for a mouse.
+      screens: {
+        touch: { raw: '(pointer: coarse)' },
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

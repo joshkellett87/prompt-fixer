@@ -8,7 +8,17 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Without these the fonts aren't discovered until the CSS has parsed —
+         measured at 44ms, after which font-display:swap flashes the fallback on
+         the serif wordmark, which is the LCP element. crossorigin is required
+         even same-origin: fonts are fetched in CORS mode. -->
+    <link rel="preload" href="/fonts/libre-baskerville-latin-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/ibm-plex-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <!-- Set to the light --background here and corrected before paint by the
+         theme script below; App keeps it in sync when the theme is switched. -->
+    <meta name="theme-color" content="#f2ece6" />
     <meta name="description" content="PromptFixer turns vague ideas into clear, high-performance AI prompts — no prompt engineering knowledge required." />
     <meta property="og:title" content="PromptFixer" />
     <meta property="og:description" content="Turn rough ideas into clear, high-performance AI prompts." />
@@ -26,7 +36,12 @@
           var dark = stored
             ? stored === "dark"
             : window.matchMedia("(prefers-color-scheme: dark)").matches;
-          if (dark) document.documentElement.classList.add("dark");
+          if (dark) {
+            document.documentElement.classList.add("dark");
+            document
+              .querySelector('meta[name="theme-color"]')
+              .setAttribute("content", "#1c1917");
+          }
         } catch (e) {}
       })();
     </script>

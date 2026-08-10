@@ -7,7 +7,8 @@
     "dev:server": "nodemon server/index.js",
     "build": "vite build client",
     "start": "node server/index.js",
-    "test:server": "jest server"
+    "test:server": "jest server",
+    "eval": "node evals/run.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

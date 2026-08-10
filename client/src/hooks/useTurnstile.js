@@ -37,7 +37,11 @@ export const useTurnstile = (onError) => {
                 window.turnstile.reset(widgetIdRef.current);
                 return;
               }
-              onError?.('Security verification failed. Please refresh the page.');
+              onError?.({
+                title: 'the security check failed',
+                body: 'refresh the page and it should clear. copy your idea first — a refresh will drop it.',
+                retryable: false,
+              });
             },
             appearance: 'interaction-only',
             theme: 'auto',

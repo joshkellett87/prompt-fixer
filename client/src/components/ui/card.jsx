@@ -23,8 +23,10 @@ const CardHeader = React.forwardRef(({ className, ...props }, ref) => (
 ))
 CardHeader.displayName = "CardHeader"
 
+// h2, not h3: these titles are the sections directly under the page h1, so an
+// h3 here left the outline with a level skipped and nothing at h2.
 const CardTitle = React.forwardRef(({ className, ...props }, ref) => (
-  <h3
+  <h2
     ref={ref}
     className={cn(
       "text-2xl font-semibold leading-none tracking-tight",
@@ -34,6 +36,7 @@ const CardTitle = React.forwardRef(({ className, ...props }, ref) => (
   />
 ))
 CardTitle.displayName = "CardTitle"
+
 
 const CardDescription = React.forwardRef(({ className, ...props }, ref) => (
   <p

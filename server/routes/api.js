@@ -7,18 +7,32 @@ const rateLimiter = require('../middleware/rateLimiter');
 // used purely for provider routing — a loose guardrail against surprise price
 // hikes, NOT a spend/session cap. Set to a modest margin (~2x) above list price
 // so normal requests never fail. Tune down cautiously if requests start erroring.
+// Both tiers set by `npm run eval` (see evals/README.md) — 396 generations across 22
+// spec-labelled cases plus 176 blind judged pairs. Re-run it before changing either.
+//
+// The trap this replaced: ranking candidates by how much they expand the input. That
+// is the one axis core-system-prompt.md §5 explicitly forbids ("a 5-word request should
+// NOT produce a 500-word prompt"). Judged on the actual spec, the Gemini models rewrote
+// already-well-formed prompts to a median 165-193% of their original length, where the
+// spec requires shorter-or-equal; the GPT-5.6 pair missed the same bar by ~25%.
 const MODELS = {
+  // Beat the previous default (gemini-3.1-flash-lite) 17-1 in blind judging, scored
+  // highest on spec compliance (87%), and costs ~4x less.
   default: {
-    name: "google/gemini-3.1-flash-lite", // GA; list ~$0.25 in / $1.50 out
-    maxPrice: { prompt: 0.5, completion: 3 },
+    name: "openai/gpt-5.6-luna", // GA; list ~$0.10 in / $0.60 out
+    maxPrice: { prompt: 0.2, completion: 1.2 },
   },
+  // Won its tier outright: 19-1 over gemini-3.6-flash, 14-4 over claude-sonnet-5, and
+  // two judges from different families agreed. Also 3x cheaper and 2x faster than the
+  // Gemini it replaces. Known weakness: weakest framework selection of the candidates
+  // (69%), which degrades the UI's framework attribution but not the generated prompt.
   power: {
-    name: "google/gemini-3-flash-preview", // hidden ?mode=power; list ~$0.50 in / $3 out
-    maxPrice: { prompt: 1, completion: 6 },
+    name: "openai/gpt-5.6-terra", // hidden ?mode=power; list ~$1 in / $6 out
+    maxPrice: { prompt: 2, completion: 12 },
   },
 };
 
-// Thinking-level scaling: pick a Gemini thinkingLevel (via OpenRouter's unified
+// Thinking-level scaling: pick a reasoning effort (via OpenRouter's unified
 // reasoning.effort) proportional to input complexity. No extra LLM call — this
 // is a deterministic heuristic run before the single generation call. Power tier
 // gets a static high floor; the default tier scales low→medium with input size.
@@ -103,8 +117,9 @@ router.post('/generate', rateLimiter, turnstileRateLimiter, verifyTurnstile, asy
     requestBody.reasoning = { effort: reasoningEffort };
 
     // Loose price guardrail (routing ceiling, not a spend cap). The large, stable
-    // system prompt is served via Gemini's implicit prompt caching (OpenRouter keeps
-    // it warm with sticky routing) — no explicit cache_control needed for Gemini.
+    // system prompt is served via OpenAI's automatic prompt caching, which triggers
+    // on an identical prefix above ~1k tokens — no explicit cache_control needed.
+    // Confirmed live: eval runs report ~3.2k of the ~3.5k prompt tokens as cached.
     requestBody.provider = { max_price: tier.maxPrice };
 
     console.log(`[Generate] Model: ${modelToUse} | reasoning: ${reasoningEffort}`);

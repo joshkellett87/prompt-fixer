@@ -1,5 +1,10 @@
 /* Self-hosted, optimized fonts.
-   Body uses a native system sans stack (no re-hosting); serif + mono are self-hosted. */
+   Body uses a native system sans stack (no re-hosting); serif + mono are self-hosted.
+   Only the three faces the interface actually requests are declared: serif 400,
+   mono 400, mono 600. Serif 700 and mono 500 were declared but never fetched —
+   nothing asks for those weights — so they were removed along with their files.
+   The two 400 faces are preloaded in index.html; mono 600 is not, since it only
+   appears below the fold. */
 @font-face {
   font-family: "Libre Baskerville";
   font-style: normal;
@@ -12,33 +17,11 @@
 }
 
 @font-face {
-  font-family: "Libre Baskerville";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("/fonts/libre-baskerville-latin-700.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
-    U+FEFF, U+FFFD;
-}
-
-@font-face {
   font-family: "IBM Plex Mono";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
   src: url("/fonts/ibm-plex-mono-latin-400.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
-    U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: "IBM Plex Mono";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("/fonts/ibm-plex-mono-latin-500.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
     U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
     U+FEFF, U+FFFD;
