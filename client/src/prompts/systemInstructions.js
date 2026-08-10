@@ -18,10 +18,10 @@ const OUTPUT_FORMAT_REFINEMENT = `
 CRITICAL OUTPUT STRUCTURE:
 1. Use [PROMPT_START] and [PROMPT_END] tags around the optimized prompt.
 2. ONLY the final prompt to be copied goes inside these tags.
-3. Provide 0-5 refinement questions explicitly targeting remaining gaps.
+3. Provide 0-5 refinement questions as a JSON array inside [QUESTIONS_START] and [QUESTIONS_END].
+   - The array is parsed with JSON.parse — emit valid JSON, e.g. ["First question?", "Second question?"]. Never a markdown list.
    - If the prompt is high-quality and complete, return an empty array: []
    - Prioritize questions about critical missing context over nice-to-haves
-   - Output questions inside [QUESTIONS_START] and [QUESTIONS_END].
 4. State which framework you used: [FRAMEWORK]FRAMEWORK_NAME[/FRAMEWORK] (use exactly: RACE, MINIMAL, RISEN, ARIA, COVAR, or CRAFT)
 `;
 
